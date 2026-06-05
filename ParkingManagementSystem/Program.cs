@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using ParkingManagementSystem.Data;
 using ParkingManagementSystem.Services;
+using ParkingManagementSystem.Services.Hosted;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +26,10 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IParkingSlotService, ParkingSlotService>();
+builder.Services.AddSingleton<IQrCodeService, QrCodeService>();
+builder.Services.AddSingleton<IPricingService, PricingService>();
+builder.Services.AddScoped<IReservationService, ReservationService>();
+builder.Services.AddHostedService<ReservationStatusUpdater>();
 
 var app = builder.Build();
 
