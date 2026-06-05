@@ -2,7 +2,7 @@
 
 A web application for reserving and managing parking spots, built with **ASP.NET Core MVC 8.0**, **Entity Framework Core**, and **SQL Server**.
 
-This repository currently implements **Sprint 1 — Project Setup & User Authentication**.
+This repository currently implements **Sprint 1 — Project Setup & User Authentication** and **Sprint 2 — Parking Slot Management & Availability**.
 
 ---
 
@@ -37,6 +37,61 @@ Acceptance criteria mapping:
 
 ---
 
+## Sprint 2 — what's included
+
+User stories covered:
+
+| ID    | User Story                                                                          |
+| ----- | ----------------------------------------------------------------------------------- |
+| US2.1 | As an admin, I want to add, edit, and delete parking slots.                        |
+| US2.2 | As a user, I want to view all available parking slots.                             |
+| US2.3 | As a user, I want to see parking slots on a map.                                   |
+| US2.4 | As an admin, I want to mark a slot as available, occupied, or maintenance.         |
+
+Acceptance criteria mapping:
+
+| AC#    | Acceptance Criteria                                                       | Where it's implemented                                                          |
+| ------ | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| AC2.1  | Admin can add a slot with number, type, hourly rate, and coordinates      | `AdminSlotsController.Create` + `Views/AdminSlots/Create.cshtml`               |
+| AC2.2  | Admin can edit slot details                                               | `AdminSlotsController.Edit`                                                     |
+| AC2.3  | Admin can delete (soft delete)                                            | `AdminSlotsController.Delete` → `ParkingSlotService.SoftDeleteAsync` sets `IsDeleted=true` |
+| AC2.4  | User views slots in a grid                                                | `Views/Slots/Index.cshtml` + `_SlotCard.cshtml`                                 |
+| AC2.5  | Each slot card shows number, type, status, hourly rate                    | `_SlotCard.cshtml`                                                              |
+| AC2.6  | Available = green                                                         | `.slot-card.status-available` in `site.css`                                     |
+| AC2.7  | Occupied = red                                                            | `.slot-card.status-occupied`                                                    |
+| AC2.8  | Maintenance = yellow                                                      | `.slot-card.status-maintenance`                                                 |
+| AC2.9  | Google Maps shows slots as markers                                        | `slots.js` `initMap()` (Maps JS API)                                            |
+| AC2.10 | Clicking a map marker shows slot details                                  | `slots.js` `buildInfoWindowContent()`                                           |
+| AC2.11 | Admin can manually change status                                          | Inline dropdown on `AdminSlots/Index` → `AdminSlotsController.SetStatus` (AJAX) |
+| AC2.12 | Filter by type (Standard, VIP, EV)                                        | `SlotsController.Index` + filter bar form                                       |
+| AC2.13 | Search by slot number                                                     | `SlotsController.Index` + `IParkingSlotService.SearchAsync`                     |
+| AC2.14 | Slot availability updates without a refresh                               | `SlotsController.Status` JSON endpoint polled every 5s by `slots.js`            |
+
+### Sample data
+
+`DbSeeder.SeedSampleSlots` inserts 10 sample slots covering all 3 types (Standard / VIP / EV) and all 3 statuses (Available / Occupied / Maintenance) clustered around the map's default center, so the page is immediately populated after first run.
+
+### Google Maps configuration
+
+Add your Google Maps JavaScript API key to `appsettings.json`:
+
+```json
+"GoogleMaps": {
+  "ApiKey": "YOUR_GOOGLE_MAPS_API_KEY_HERE",
+  "DefaultLatitude": 40.7589,
+  "DefaultLongitude": -73.9851,
+  "DefaultZoom": 17
+}
+```
+
+If the key is empty, the slot list still works in grid mode and shows a friendly "Map unavailable" notice on the map panel — useful while developing without an API key. The Maps JS API also requires the **Maps JavaScript API** to be enabled in your Google Cloud project.
+
+### Upgrading an existing Sprint 1 database
+
+If you ran Sprint 1 earlier, your database already exists and `EnsureCreated()` will not add the new `ParkingSlots` table on its own. The seeder calls `EnsureParkingSlotsTable()` which runs an idempotent `IF NOT EXISTS … CREATE TABLE …` to add the table the first time you run Sprint 2 — no manual migration step is needed.
+
+---
+
 ## Tech stack
 
 - **ASP.NET Core 8.0 MVC** — Controllers, Views (Razor), Models
@@ -56,17 +111,23 @@ ParkingManagementSystem/
 │   ├── HomeController.cs        # Landing page & dashboard
 │   ├── AccountController.cs     # Register, Login, Logout, Forgot/Reset Password
 │   ├── ProfileController.cs     # View/edit own profile
-│   └── AdminController.cs       # Admin-only: list all users
+│   ├── AdminController.cs       # Admin-only: list all users
+│   ├── SlotsController.cs       # Public slot listing + JSON live-status feed
+│   └── AdminSlotsController.cs  # Admin-only slot CRUD + status toggle
 ├── Models/
 │   ├── User.cs
 │   ├── PasswordResetToken.cs
+│   ├── ParkingSlot.cs
+│   ├── Enums/{SlotType.cs, SlotStatus.cs}
 │   ├── ErrorViewModel.cs
 │   └── ViewModels/
 │       ├── RegisterViewModel.cs
 │       ├── LoginViewModel.cs
 │       ├── ForgotPasswordViewModel.cs
 │       ├── ResetPasswordViewModel.cs
-│       └── ProfileViewModel.cs
+│       ├── ProfileViewModel.cs
+│       ├── ParkingSlotFormViewModel.cs
+│       └── SlotsIndexViewModel.cs
 ├── Data/
 │   ├── ApplicationDbContext.cs  # EF Core DbContext + model configuration
 │   └── DbSeeder.cs              # Creates default admin on startup
@@ -74,7 +135,8 @@ ParkingManagementSystem/
 │   ├── IUserService.cs / UserService.cs       # Registration, login validation, profile, reset tokens
 │   ├── IPasswordHasher.cs / PasswordHasher.cs # BCrypt hashing
 │   ├── IEmailService.cs / EmailService.cs     # Dev: file log; Prod: SMTP
-│   └── ICurrentUserService.cs                 # Session-backed current user info
+│   ├── ICurrentUserService.cs                 # Session-backed current user info
+│   └── IParkingSlotService.cs / ParkingSlotService.cs # Slot CRUD, search/filter, status updates
 ├── Filters/
 │   └── SessionAuthorizeAttribute.cs           # Session-based authorization filter
 ├── Views/
@@ -83,9 +145,12 @@ ParkingManagementSystem/
 │   ├── Home/{Index, Dashboard, Privacy}.cshtml
 │   ├── Account/{Register, Login, ForgotPassword, ForgotPasswordConfirmation, ResetPassword, AccessDenied}.cshtml
 │   ├── Profile/{Index, Edit}.cshtml
-│   └── Admin/Users.cshtml
+│   ├── Admin/Users.cshtml
+│   ├── Slots/{Index, _SlotCard}.cshtml
+│   └── AdminSlots/{Index, Create, Edit, Delete}.cshtml
 ├── wwwroot/
 │   ├── css/site.css
+│   ├── js/{slots.js, admin-slots.js}
 │   └── lib/  (jQuery + jQuery validation)
 ├── App_Data/                    # Dev mode: password-reset-emails.log
 ├── Program.cs                   # DI, EF Core, session, seeding, MVC routing
@@ -124,6 +189,23 @@ Created via `EF Core` with `Database.EnsureCreated()` on startup (no migrations 
 | `ExpiresAt` | DATETIME2 (UTC)     | `CreatedAt + AppSettings:PasswordResetTokenLifetimeHours` (default 1h) |
 | `CreatedAt` | DATETIME2 (UTC)     |                                                                        |
 | `Used`      | BIT                 | Single-use; existing unused tokens are invalidated on new requests     |
+
+### `ParkingSlots`
+
+| Column        | Type                | Notes                                                                            |
+| ------------- | ------------------- | -------------------------------------------------------------------------------- |
+| `Id`          | INT, PK, Identity   |                                                                                  |
+| `SlotNumber`  | NVARCHAR(20)        | Required, stored upper-cased. **Unique among non-deleted rows** (filtered index) |
+| `SlotType`    | NVARCHAR(20)        | `Standard`, `VIP`, or `EV` (stored as string)                                    |
+| `Status`      | NVARCHAR(20)        | `Available`, `Occupied`, or `Maintenance` (stored as string)                     |
+| `HourlyRate`  | DECIMAL(10,2)       | Must be > 0                                                                      |
+| `Latitude`    | FLOAT               | Range -90..90                                                                    |
+| `Longitude`   | FLOAT               | Range -180..180                                                                  |
+| `Description` | NVARCHAR(500) NULL  |                                                                                  |
+| `IsDeleted`   | BIT                 | Soft-delete flag; deleted slots are hidden from all queries                      |
+| `CreatedAt`   | DATETIME2 (UTC)     |                                                                                  |
+| `UpdatedAt`   | DATETIME2 NULL      |                                                                                  |
+| `DeletedAt`   | DATETIME2 NULL      |                                                                                  |
 
 ### Default seed data
 
@@ -206,6 +288,25 @@ This makes Sprint 1 testable end-to-end without configuring an SMTP server.
 | T1.12 | Log in as `admin@parking.local` and open `/Admin/Users`           | Table of all registered users                   |
 | T1.13 | Edit profile (name/phone/plate) and save                          | "Profile updated successfully." + values persisted |
 
+### Sprint 2 manual test plan
+
+| Test  | Steps                                                              | Expected                                                             |
+| ----- | ------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| T2.1  | As admin, open **Manage Slots → New slot**, fill the form, submit  | Slot appears in `/admin/slots` list and on `/Slots` map + grid       |
+| T2.2  | Edit a slot, change its rate/type, save                            | Changes persist and are reflected on the public page                 |
+| T2.3  | Click **Delete** on a slot, confirm                                | Slot disappears from both admin list and public grid (soft-deleted)  |
+| T2.4  | Visit `/Slots` as a user                                           | Grid shows all non-deleted slots, totals are correct                 |
+| T2.5  | Inspect an Available slot card                                     | Green status dot, green border + label                               |
+| T2.6  | Inspect an Occupied slot card                                      | Red dot/border/label                                                 |
+| T2.7  | Inspect a Maintenance slot card                                    | Yellow/amber dot/border/label                                        |
+| T2.8  | With a valid `GoogleMaps:ApiKey`, refresh `/Slots`                  | Google Map loads and shows a marker per slot                         |
+| T2.9  | Click any map marker                                                | InfoWindow opens with number, status badge, type, rate, description  |
+| T2.10 | Apply **Type = Standard** filter                                    | Only Standard slots remain in the grid (and only their markers)      |
+| T2.11 | Apply **Type = VIP** filter                                         | Only VIP slots shown                                                 |
+| T2.12 | Search "A-01"                                                       | Only the matching slot is shown                                      |
+| T2.13 | As admin, change a slot's status via the inline dropdown            | "Saved" feedback, color updates instantly without a page reload      |
+| T2.14 | Open `/Slots` in two browsers; in admin, change a slot's status     | Both browsers reflect the new status within ≤ 5s (AJAX poll)         |
+
 ---
 
 ## Security notes
@@ -226,5 +327,17 @@ This makes Sprint 1 testable end-to-end without configuring an SMTP server.
 - [x] Manual test plan documented above
 - [x] No critical/major bugs
 - [x] Database schema documented (this README)
+- [ ] Code reviewed by team member *(team activity)*
+- [ ] Sprint retrospective completed *(team activity)*
+
+## Definition of Done — Sprint 2
+
+- [x] All code committed to version control (Git)
+- [x] All acceptance criteria implemented
+- [x] Manual test plan documented above (T2.1 – T2.14)
+- [x] Google Maps API key configuration documented and working when supplied
+- [x] UI is responsive (filter bar collapses, map+grid stacks on mobile, table scrolls horizontally)
+- [x] No critical/major bugs
+- [x] Database seeded with 10 sample parking slots covering all types and statuses
 - [ ] Code reviewed by team member *(team activity)*
 - [ ] Sprint retrospective completed *(team activity)*

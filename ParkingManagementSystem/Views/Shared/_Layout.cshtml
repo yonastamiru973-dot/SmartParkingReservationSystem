@@ -17,9 +17,11 @@
                 @if (CurrentUser.IsAuthenticated)
                 {
                     <a asp-controller="Home" asp-action="Dashboard">Dashboard</a>
+                    <a asp-controller="Slots" asp-action="Index">Slots</a>
                     <a asp-controller="Profile" asp-action="Index">My Profile</a>
                     if (CurrentUser.IsAdmin)
                     {
+                        <a asp-controller="AdminSlots" asp-action="Index">Manage Slots</a>
                         <a asp-controller="Admin" asp-action="Users">Users</a>
                     }
                     <span class="nav-user">Hi, @CurrentUser.FullName</span>
@@ -30,6 +32,7 @@
                 }
                 else
                 {
+                    <a asp-controller="Slots" asp-action="Index">Slots</a>
                     <a asp-controller="Account" asp-action="Login">Sign in</a>
                     <a asp-controller="Account" asp-action="Register" class="btn btn-primary btn-sm">Create account</a>
                 }

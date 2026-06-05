@@ -10,6 +10,11 @@
 </div>
 
 <div class="card-grid">
+    <a asp-controller="Slots" asp-action="Index" class="card card-link">
+        <h3>Find Parking</h3>
+        <p>Browse available parking slots on a live map and grid view.</p>
+    </a>
+
     <a asp-controller="Profile" asp-action="Index" class="card card-link">
         <h3>My Profile</h3>
         <p>View and update your personal and vehicle information.</p>
@@ -17,6 +22,10 @@
 
     @if (CurrentUser.IsAdmin)
     {
+        <a asp-controller="AdminSlots" asp-action="Index" class="card card-link">
+            <h3>Manage Slots</h3>
+            <p>Add, edit, delete, and update the status of parking slots.</p>
+        </a>
         <a asp-controller="Admin" asp-action="Users" class="card card-link">
             <h3>Manage Users</h3>
             <p>View all registered users on the platform.</p>
