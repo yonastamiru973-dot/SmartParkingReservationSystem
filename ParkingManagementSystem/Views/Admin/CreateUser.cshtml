@@ -1,0 +1,78 @@
+@model AdminUserFormViewModel
+@{
+    ViewData["Title"] = "New User";
+}
+
+<div class="page-header">
+    <h1>Create User</h1>
+    <a asp-action="Users" class="btn btn-secondary">Back to list</a>
+</div>
+
+<div class="card narrow">
+    <form asp-action="CreateUser" method="post" novalidate>
+        <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+
+        <div class="form-row">
+            <label asp-for="FullName"></label>
+            <input asp-for="FullName" class="form-input" />
+            <span asp-validation-for="FullName" class="field-error"></span>
+        </div>
+
+        <div class="form-row">
+            <label asp-for="Email"></label>
+            <input asp-for="Email" class="form-input" type="email" />
+            <span asp-validation-for="Email" class="field-error"></span>
+        </div>
+
+        <div class="form-grid-2">
+            <div class="form-row">
+                <label asp-for="PhoneNumber"></label>
+                <input asp-for="PhoneNumber" class="form-input" />
+                <span asp-validation-for="PhoneNumber" class="field-error"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="VehiclePlateNumber"></label>
+                <input asp-for="VehiclePlateNumber" class="form-input" />
+                <span asp-validation-for="VehiclePlateNumber" class="field-error"></span>
+            </div>
+        </div>
+
+        <div class="form-grid-2">
+            <div class="form-row">
+                <label asp-for="Role"></label>
+                <select asp-for="Role" class="form-input">
+                    <option value="User">User</option>
+                    <option value="Admin">Admin</option>
+                </select>
+                <span asp-validation-for="Role" class="field-error"></span>
+            </div>
+            <div class="form-row inline-row" style="align-self: end;">
+                <label class="checkbox">
+                    <input asp-for="IsActive" /> <span>Active account</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="form-grid-2">
+            <div class="form-row">
+                <label asp-for="Password"></label>
+                <input asp-for="Password" class="form-input" autocomplete="new-password" required />
+                <span asp-validation-for="Password" class="field-error"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="ConfirmPassword"></label>
+                <input asp-for="ConfirmPassword" class="form-input" autocomplete="new-password" required />
+                <span asp-validation-for="ConfirmPassword" class="field-error"></span>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <a asp-action="Users" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">Create user</button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

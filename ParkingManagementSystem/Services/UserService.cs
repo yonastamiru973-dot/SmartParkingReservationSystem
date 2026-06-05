@@ -95,6 +95,108 @@ public class UserService : IUserService
         return ServiceResult.Ok();
     }
 
+    public async Task<ServiceResult<User>> CreateAsAdminAsync(AdminUserFormViewModel model)
+    {
+        if (string.IsNullOrWhiteSpace(model.Password))
+            return ServiceResult<User>.Fail("Password is required when creating a user.");
+
+        var email = model.Email.Trim().ToLowerInvariant();
+        if (await _db.Users.AnyAsync(u => u.Email == email))
+            return ServiceResult<User>.Fail("An account with this email already exists.");
+
+        var role = NormalizeRole(model.Role);
+        var user = new User
+        {
+            FullName = model.FullName.Trim(),
+            Email = email,
+            PhoneNumber = model.PhoneNumber.Trim(),
+            VehiclePlateNumber = model.VehiclePlateNumber.Trim().ToUpperInvariant(),
+            PasswordHash = _hasher.Hash(model.Password),
+            Role = role,
+            IsActive = model.IsActive,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.Users.Add(user);
+        await _db.SaveChangesAsync();
+        return ServiceResult<User>.Ok(user);
+    }
+
+    public async Task<ServiceResult> UpdateAsAdminAsync(int userId, AdminUserFormViewModel model, int actingAdminId)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null) return ServiceResult.Fail("User not found.");
+
+        var newEmail = model.Email.Trim().ToLowerInvariant();
+        if (newEmail != user.Email)
+        {
+            var taken = await _db.Users.AnyAsync(u => u.Email == newEmail && u.Id != userId);
+            if (taken) return ServiceResult.Fail("That email is already in use.");
+            user.Email = newEmail;
+        }
+
+        var newRole = NormalizeRole(model.Role);
+
+        if (userId == actingAdminId)
+        {
+            if (newRole != "Admin")
+                return ServiceResult.Fail("You cannot remove your own admin role.");
+            if (!model.IsActive)
+                return ServiceResult.Fail("You cannot deactivate your own account.");
+        }
+        else if (user.Role == "Admin" && newRole != "Admin")
+        {
+            var otherAdmins = await _db.Users.CountAsync(u => u.Role == "Admin" && u.IsActive && u.Id != userId);
+            if (otherAdmins == 0)
+                return ServiceResult.Fail("Cannot demote the last active administrator.");
+        }
+
+        user.FullName = model.FullName.Trim();
+        user.PhoneNumber = model.PhoneNumber.Trim();
+        user.VehiclePlateNumber = model.VehiclePlateNumber.Trim().ToUpperInvariant();
+        user.Role = newRole;
+        user.IsActive = model.IsActive;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        if (!string.IsNullOrWhiteSpace(model.Password))
+            user.PasswordHash = _hasher.Hash(model.Password);
+
+        await _db.SaveChangesAsync();
+        return ServiceResult.Ok();
+    }
+
+    public async Task<ServiceResult> DeleteUserAsync(int userId, int actingAdminId)
+    {
+        if (userId == actingAdminId)
+            return ServiceResult.Fail("You cannot delete your own account.");
+
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null) return ServiceResult.Fail("User not found.");
+
+        if (user.Role == "Admin" && user.IsActive)
+        {
+            var otherAdmins = await _db.Users.CountAsync(u => u.Role == "Admin" && u.IsActive && u.Id != userId);
+            if (otherAdmins == 0)
+                return ServiceResult.Fail("Cannot delete the last active administrator.");
+        }
+
+        var hasReservations = await _db.Reservations.AnyAsync(r => r.UserId == userId);
+        if (hasReservations)
+        {
+            user.IsActive = false;
+            user.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+            return ServiceResult.Ok();
+        }
+
+        _db.Users.Remove(user);
+        await _db.SaveChangesAsync();
+        return ServiceResult.Ok();
+    }
+
+    private static string NormalizeRole(string role) =>
+        string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase) ? "Admin" : "User";
+
     public async Task<ServiceResult<string>> CreatePasswordResetTokenAsync(string email)
     {
         var user = await GetByEmailAsync(email);

@@ -1079,3 +1079,13 @@ p { margin: 0 0 .75rem 0; }
     animation: spin .8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+.admin-self-note {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: var(--radius-sm);
+    padding: .65rem .85rem;
+    margin-bottom: 1rem;
+    font-size: .9rem;
+}
+.password-hint { margin: .5rem 0 .75rem; font-size: .875rem; }

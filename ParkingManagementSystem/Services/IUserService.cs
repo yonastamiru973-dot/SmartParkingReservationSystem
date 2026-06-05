@@ -27,6 +27,10 @@ public interface IUserService
     Task<IReadOnlyList<User>> GetAllAsync();
     Task<ServiceResult> UpdateProfileAsync(int userId, ProfileViewModel model);
 
+    Task<ServiceResult<User>> CreateAsAdminAsync(AdminUserFormViewModel model);
+    Task<ServiceResult> UpdateAsAdminAsync(int userId, AdminUserFormViewModel model, int actingAdminId);
+    Task<ServiceResult> DeleteUserAsync(int userId, int actingAdminId);
+
     Task<ServiceResult<string>> CreatePasswordResetTokenAsync(string email);
     Task<ServiceResult> ResetPasswordAsync(string email, string token, string newPassword);
 }

@@ -1,0 +1,33 @@
+@model User
+@{
+    ViewData["Title"] = $"Delete User — {Model.FullName}";
+}
+
+<div class="page-header">
+    <h1>Delete User</h1>
+    <a asp-action="Users" class="btn btn-secondary">Back to list</a>
+</div>
+
+<div class="card narrow">
+    <p>Are you sure you want to delete <strong>@Model.FullName</strong> (<code>@Model.Email</code>)?</p>
+
+    <dl class="info-list">
+        <div class="info-row"><dt>Role</dt><dd><span class="role-badge role-@Model.Role.ToLower()">@Model.Role</span></dd></div>
+        <div class="info-row"><dt>Phone</dt><dd>@Model.PhoneNumber</dd></div>
+        <div class="info-row"><dt>Plate</dt><dd>@Model.VehiclePlateNumber</dd></div>
+        <div class="info-row"><dt>Status</dt><dd>@(Model.IsActive ? "Active" : "Inactive")</dd></div>
+    </dl>
+
+    <p class="muted">
+        If this user has reservation history, they will be <strong>deactivated</strong> (soft delete) so records are preserved.
+        Users with no reservations are removed permanently.
+    </p>
+
+    <form asp-action="DeleteUser" asp-route-id="@Model.Id" method="post">
+        @Html.AntiForgeryToken()
+        <div class="form-actions">
+            <a asp-action="Users" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-danger">Yes, delete user</button>
+        </div>
+    </form>
+</div>
