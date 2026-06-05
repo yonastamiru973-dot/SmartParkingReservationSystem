@@ -17,4 +17,5 @@ public class AdminReservationsViewModel
     public int CompletedCount => Reservations.Count(r => r.Status == ReservationStatus.Completed);
     public int CancelledCount => Reservations.Count(r => r.Status == ReservationStatus.Cancelled);
     public int ExpiredCount   => Reservations.Count(r => r.Status == ReservationStatus.Expired);
+    public int PendingPaymentCount => Reservations.Count(r => r.Status == ReservationStatus.PendingPayment);
 }

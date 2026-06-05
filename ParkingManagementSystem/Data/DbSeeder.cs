@@ -103,6 +103,8 @@ BEGIN
         [EntryTime] DATETIME2 NULL,
         [ExitTime] DATETIME2 NULL,
         [CancelledAt] DATETIME2 NULL,
+        [PaidAt] DATETIME2 NULL,
+        [PaymentReference] NVARCHAR(50) NULL,
         [ActualDuration] TIME NULL,
         CONSTRAINT [FK_Reservations_Users] FOREIGN KEY ([UserId]) REFERENCES [Users]([Id]),
         CONSTRAINT [FK_Reservations_ParkingSlots] FOREIGN KEY ([SlotId]) REFERENCES [ParkingSlots]([Id])
@@ -118,6 +120,14 @@ BEGIN
         ON [Reservations]([QrToken]);
 END";
         db.Database.ExecuteSqlRaw(sql);
+
+        // Sprint 3+: payment simulation columns on existing databases.
+        const string alterSql = @"
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Reservations') AND name = 'PaidAt')
+    ALTER TABLE [Reservations] ADD [PaidAt] DATETIME2 NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Reservations') AND name = 'PaymentReference')
+    ALTER TABLE [Reservations] ADD [PaymentReference] NVARCHAR(50) NULL;";
+        db.Database.ExecuteSqlRaw(alterSql);
     }
 
     private static void EnsureParkingSlotsTable(ApplicationDbContext db)

@@ -57,6 +57,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(r => r.Fee).HasColumnType("decimal(10,2)");
             entity.Property(r => r.ExtensionFee).HasColumnType("decimal(10,2)");
             entity.Property(r => r.QrToken).HasMaxLength(256).IsRequired();
+            entity.Property(r => r.PaymentReference).HasMaxLength(50);
 
             entity.HasOne(r => r.User)
                   .WithMany()
