@@ -155,6 +155,18 @@ RES|{reservationId}|{userId}|{slotId}|{startTicks}|{endTicks}|{signature}
 | Confirmed  | Expired   | Start time + 15 min grace passed with no entry scan    |
 | Active     | Completed | Planned `EndTime` passed (auto-exit if no exit scan)   |
 
+### Simulated payment (no real gateway)
+
+Because a real payment provider is not available in this environment, checkout is **fully simulated**:
+
+1. User completes the booking form → reservation is created with status **`PendingPayment`** (slot held, no QR yet).
+2. User is redirected to **`/Reservations/Payment`** with a fake card form and live card preview.
+3. On submit, a 1.8 s “processing” animation runs, then the app marks the reservation **`Confirmed`**, stores a fake reference (`SIM-XXXXXXXXXXXX`), and generates the QR code.
+4. **Extensions** follow the same pattern: extend form → payment page → fee applied after simulated pay.
+5. Unpaid `PendingPayment` reservations auto-cancel after **30 minutes** (`Reservations:PaymentTimeoutMinutes`).
+
+Demo card for testing: `4242424242424242`, expiry `12/28`, CVV `123`, any cardholder name.
+
 ### Scanner
 
 `/scanner` (admin role) provides:
@@ -309,6 +321,8 @@ Created via `EF Core` with `Database.EnsureCreated()` on startup (no migrations 
 | `EntryTime`      | DATETIME2 NULL      | Set on entry scan                                                     |
 | `ExitTime`       | DATETIME2 NULL      | Set on exit scan or auto-completion                                   |
 | `CancelledAt`    | DATETIME2 NULL      | Set on user cancellation                                              |
+| `PaidAt`         | DATETIME2 NULL      | When simulated payment completed                                      |
+| `PaymentReference` | NVARCHAR(50) NULL | Fake receipt ID (`SIM-…` / `SIM-EXT-…`)                              |
 | `ActualDuration` | TIME NULL           | `ExitTime - EntryTime`                                                |
 
 **Indexes:** `(UserId, StartTime)`, `(SlotId, StartTime, EndTime, Status)`, unique `(QrToken)`.
