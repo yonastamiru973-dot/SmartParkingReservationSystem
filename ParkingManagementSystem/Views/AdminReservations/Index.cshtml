@@ -1,0 +1,94 @@
+@model AdminReservationsViewModel
+@{
+    ViewData["Title"] = "All Reservations";
+}
+
+<div class="page-header">
+    <div>
+        <h1>All Reservations</h1>
+        <p class="muted">@Model.Total total &middot; @Model.ConfirmedCount confirmed &middot; @Model.ActiveCount active &middot; @Model.CompletedCount completed</p>
+    </div>
+    <a asp-controller="Scanner" asp-action="Index" class="btn btn-primary">Open scanner</a>
+</div>
+
+<form method="get" class="filter-bar">
+    <div class="filter-field">
+        <label for="from">From date</label>
+        <input id="from" name="from" type="date" value="@Model.FromDate?.ToString("yyyy-MM-dd")" class="form-input" />
+    </div>
+    <div class="filter-field">
+        <label for="to">To date</label>
+        <input id="to" name="to" type="date" value="@Model.ToDate?.ToString("yyyy-MM-dd")" class="form-input" />
+    </div>
+    <div class="filter-field">
+        <label for="status">Status</label>
+        <select id="status" name="status" class="form-input">
+            <option value="">All statuses</option>
+            @foreach (var s in Enum.GetValues<ReservationStatus>())
+            {
+                <option value="@s" selected="@(Model.Status == s)">@s</option>
+            }
+        </select>
+    </div>
+    <div class="filter-field">
+        <label for="user">User (name / email / plate)</label>
+        <input id="user" name="user" type="search" value="@Model.UserQuery" placeholder="Search user…" class="form-input" />
+    </div>
+    <div class="filter-actions">
+        <button type="submit" class="btn btn-primary">Filter</button>
+        <a asp-action="Index" class="btn btn-secondary">Reset</a>
+    </div>
+</form>
+
+<div class="card">
+    @if (Model.Reservations.Count == 0)
+    {
+        <p class="muted">No reservations match your filters.</p>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>User</th>
+                        <th>Slot</th>
+                        <th>Start</th>
+                        <th>End</th>
+                        <th>Status</th>
+                        <th>Fee</th>
+                        <th>Entry</th>
+                        <th>Exit</th>
+                        <th>Duration</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in Model.Reservations)
+                    {
+                        var sc = r.Status.ToString().ToLower();
+                        <tr>
+                            <td>#@r.Id</td>
+                            <td>
+                                <strong>@(r.User?.FullName ?? "—")</strong><br />
+                                <span class="muted">@(r.User?.Email)</span>
+                            </td>
+                            <td><span class="slot-number-sm">@(r.Slot?.SlotNumber ?? "—")</span></td>
+                            <td>@r.StartTime.ToString("yyyy-MM-dd HH:mm")</td>
+                            <td>@r.EndTime.ToString("yyyy-MM-dd HH:mm")</td>
+                            <td><span class="res-status-badge status-@sc">@r.Status</span></td>
+                            <td>@r.TotalFee.ToString("C")</td>
+                            <td class="muted">@(r.EntryTime?.ToLocalTime().ToString("HH:mm") ?? "—")</td>
+                            <td class="muted">@(r.ExitTime?.ToLocalTime().ToString("HH:mm") ?? "—")</td>
+                            <td class="muted">
+                                @(r.ActualDuration.HasValue
+                                    ? $"{(int)r.ActualDuration.Value.TotalHours}h {r.ActualDuration.Value.Minutes}m"
+                                    : "—")
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
