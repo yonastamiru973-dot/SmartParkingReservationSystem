@@ -1,13 +1,12 @@
 @model SlotsIndexViewModel
 @{
     ViewData["Title"] = "Parking Slots";
-    var hasMapsKey = !string.IsNullOrWhiteSpace(Model.GoogleMapsApiKey);
 }
 
 <div class="page-header">
     <div>
         <h1>Parking Slots</h1>
-        <p class="muted">Pick a slot below or locate one on the map. Availability refreshes automatically.</p>
+        <p class="muted">Pick a slot below or locate one on the lot view. Availability refreshes automatically.</p>
     </div>
     <div class="slot-counts">
         <span class="count-pill count-available">@Model.AvailableCount available</span>
@@ -48,24 +47,22 @@
 </form>
 
 <section class="slots-layout">
-    <div class="map-wrap card">
-        @if (hasMapsKey)
-        {
-            <div id="slot-map"
-                 data-center-lat="@Model.MapDefaultLatitude.ToString(System.Globalization.CultureInfo.InvariantCulture)"
-                 data-center-lng="@Model.MapDefaultLongitude.ToString(System.Globalization.CultureInfo.InvariantCulture)"
-                 data-zoom="@Model.MapDefaultZoom"></div>
-        }
-        else
-        {
-            <div class="map-placeholder">
-                <h3>Map unavailable</h3>
-                <p class="muted">
-                    Add your Google Maps API key in <code>appsettings.json</code>
-                    under <code>GoogleMaps:ApiKey</code> to display the map.
-                </p>
+    <div class="lot-card card">
+        <div class="lot-card-head">
+            <h3>Parking Lot — Floor View</h3>
+            <div class="lot-legend">
+                <span class="legend-dot legend-available"></span> Available
+                <span class="legend-dot legend-occupied"></span> Occupied
+                <span class="legend-dot legend-maintenance"></span> Maintenance
             </div>
-        }
+        </div>
+        <div class="lot-map" id="lot-map" aria-label="Simulated parking lot layout">
+            <span class="lot-compass" aria-hidden="true">N</span>
+            <div class="lot-popover" id="lot-popover" role="dialog"></div>
+        </div>
+        <p class="lot-foot muted">
+            Top-down simulated view. Click a slot tile to see its details.
+        </p>
     </div>
 
     <div class="slot-grid" id="slot-grid">
@@ -107,9 +104,4 @@
 
 @section Scripts {
     <script src="~/js/slots.js" asp-append-version="true"></script>
-    @if (hasMapsKey)
-    {
-        <script async defer
-                src="https://maps.googleapis.com/maps/api/js?key=@Model.GoogleMapsApiKey&callback=initSlotsMap"></script>
-    }
 }

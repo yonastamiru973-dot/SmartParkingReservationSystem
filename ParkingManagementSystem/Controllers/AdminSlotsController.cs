@@ -29,8 +29,8 @@ public class AdminSlotsController : Controller
     [HttpGet("create")]
     public IActionResult Create()
     {
-        var defaultLat = double.TryParse(_config["GoogleMaps:DefaultLatitude"], out var lat) ? lat : 40.7589;
-        var defaultLng = double.TryParse(_config["GoogleMaps:DefaultLongitude"], out var lng) ? lng : -73.9851;
+        var defaultLat = double.TryParse(_config["ParkingLot:DefaultLatitude"], out var lat) ? lat : 40.7589;
+        var defaultLng = double.TryParse(_config["ParkingLot:DefaultLongitude"], out var lng) ? lng : -73.9851;
 
         return View(new ParkingSlotFormViewModel
         {

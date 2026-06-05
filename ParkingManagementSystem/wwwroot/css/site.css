@@ -516,25 +516,190 @@ p { margin: 0 0 .75rem 0; }
     .slots-layout { grid-template-columns: 1fr; }
 }
 
-.map-wrap { padding: 0; overflow: hidden; min-height: 420px; }
-#slot-map { width: 100%; height: 100%; min-height: 420px; border-radius: var(--radius); }
-.map-placeholder {
+/* ===== Simulated parking-lot view (no Google Maps) ===== */
+
+.lot-card { display: flex; flex-direction: column; gap: .75rem; }
+.lot-card-head {
     display: flex;
-    flex-direction: column;
-    justify-content: center;
     align-items: center;
-    text-align: center;
-    height: 100%;
-    min-height: 420px;
-    padding: 2rem;
-    background: linear-gradient(135deg, #eff6ff 0%, #ede9fe 100%);
-    border-radius: var(--radius);
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
 }
-.map-placeholder code {
-    background: #fff;
+.lot-card-head h3 { margin: 0; }
+.lot-legend {
+    display: inline-flex;
+    align-items: center;
+    gap: .85rem;
+    font-size: .825rem;
+    color: var(--color-muted);
+}
+.legend-dot {
+    display: inline-block;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    margin-right: .3rem;
+    vertical-align: middle;
+}
+.legend-available   { background: var(--color-success); }
+.legend-occupied    { background: var(--color-error); }
+.legend-maintenance { background: var(--color-warn); }
+.lot-foot { margin: 0; font-size: .825rem; }
+
+.lot-map {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 5 / 4;
+    min-height: 360px;
+    border-radius: var(--radius);
+    background-color: #334155;
+    background-image:
+        /* faint slot stripes */
+        repeating-linear-gradient(90deg,
+            rgba(255,255,255,0.04) 0 1px,
+            transparent 1px 56px),
+        repeating-linear-gradient(0deg,
+            rgba(255,255,255,0.04) 0 1px,
+            transparent 1px 56px),
+        /* central driving lane gradient */
+        linear-gradient(180deg, #475569 0%, #334155 60%, #1e293b 100%);
+    background-blend-mode: overlay, overlay, normal;
+    overflow: hidden;
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,0.06);
+}
+.lot-map::before {
+    /* dashed center lane marking */
+    content: "";
+    position: absolute;
+    top: 50%; left: 4%; right: 4%;
+    height: 0;
+    border-top: 2px dashed rgba(255, 255, 0, 0.35);
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+
+.lot-compass {
+    position: absolute;
+    top: 12px; left: 12px;
+    width: 30px; height: 30px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.25);
+    color: rgba(255,255,255,0.85);
+    border-radius: 50%;
+    font-weight: 800;
+    font-size: .75rem;
+    letter-spacing: .04em;
+    pointer-events: none;
+    z-index: 4;
+}
+
+.lot-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255,255,255,0.7);
+    font-size: .95rem;
+}
+
+.lot-tile {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    width: 60px; height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid rgba(0,0,0,0.18);
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-weight: 800;
+    font-size: .8rem;
+    color: #fff;
+    text-shadow: 0 1px 1px rgba(0,0,0,.35);
+    box-shadow: 0 4px 10px rgba(0,0,0,.25);
+    transition: transform .15s ease, box-shadow .15s ease, background-color .25s ease;
+    z-index: 2;
+    padding: 0;
+}
+.lot-tile:hover,
+.lot-tile:focus-visible {
+    transform: translate(-50%, -50%) scale(1.08);
+    box-shadow: 0 8px 18px rgba(0,0,0,.35);
+    outline: none;
+    z-index: 5;
+}
+.lot-tile.status-available   { background: linear-gradient(180deg, #34d399 0%, #10b981 100%); }
+.lot-tile.status-occupied    { background: linear-gradient(180deg, #f87171 0%, #dc2626 100%); }
+.lot-tile.status-maintenance { background: linear-gradient(180deg, #fbbf24 0%, #d97706 100%); }
+.lot-tile-number { line-height: 1; }
+
+/* Popover that appears when a tile is clicked */
+.lot-popover {
+    position: absolute;
+    display: none;
+    transform: translate(-50%, 12px);
+    min-width: 220px;
+    max-width: 260px;
+    background: var(--color-surface);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 18px 40px rgba(0,0,0,.35);
+    padding: 1rem 1.1rem .9rem;
+    z-index: 10;
+    color: var(--color-text);
+}
+.lot-popover.open { display: block; }
+.lot-popover.above { transform: translate(-50%, calc(-100% - 12px)); }
+
+.lot-popover-close {
+    position: absolute;
+    top: 6px; right: 8px;
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    line-height: 1;
+    color: var(--color-muted);
+    cursor: pointer;
     padding: .15rem .35rem;
     border-radius: 4px;
-    border: 1px solid var(--color-border);
+}
+.lot-popover-close:hover { background: #f1f5f9; color: var(--color-text); }
+
+.lot-popover-number {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-weight: 800;
+    font-size: 1.25rem;
+    margin-bottom: .35rem;
+}
+.lot-popover-status {
+    display: inline-block;
+    padding: .15rem .55rem;
+    border-radius: 999px;
+    font-size: .7rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    margin-bottom: .6rem;
+}
+.lot-popover-status.status-available   { background: #dcfce7; color: #166534; }
+.lot-popover-status.status-occupied    { background: #fee2e2; color: #991b1b; }
+.lot-popover-status.status-maintenance { background: #fef3c7; color: #92400e; }
+
+.lot-popover-meta {
+    margin: 0;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: .65rem;
+    row-gap: .35rem;
+    font-size: .825rem;
+}
+.lot-popover-meta dt { color: var(--color-muted); font-weight: 500; }
+.lot-popover-meta dd { margin: 0; }
+
+@media (max-width: 540px) {
+    .lot-tile { width: 50px; height: 38px; font-size: .7rem; }
 }
 
 .slot-grid {

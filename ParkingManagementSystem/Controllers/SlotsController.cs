@@ -8,12 +8,10 @@ namespace ParkingManagementSystem.Controllers;
 public class SlotsController : Controller
 {
     private readonly IParkingSlotService _slots;
-    private readonly IConfiguration _config;
 
-    public SlotsController(IParkingSlotService slots, IConfiguration config)
+    public SlotsController(IParkingSlotService slots)
     {
         _slots = slots;
-        _config = config;
     }
 
     [HttpGet]
@@ -21,20 +19,12 @@ public class SlotsController : Controller
     {
         var results = await _slots.SearchAsync(search, type, status);
 
-        var defaultLat = double.TryParse(_config["GoogleMaps:DefaultLatitude"], out var lat) ? lat : 40.7589;
-        var defaultLng = double.TryParse(_config["GoogleMaps:DefaultLongitude"], out var lng) ? lng : -73.9851;
-        var defaultZoom = int.TryParse(_config["GoogleMaps:DefaultZoom"], out var zoom) ? zoom : 17;
-
         var vm = new SlotsIndexViewModel
         {
             Slots = results,
             SearchTerm = search,
             TypeFilter = type,
-            StatusFilter = status,
-            GoogleMapsApiKey = _config["GoogleMaps:ApiKey"],
-            MapDefaultLatitude = defaultLat,
-            MapDefaultLongitude = defaultLng,
-            MapDefaultZoom = defaultZoom
+            StatusFilter = status
         };
         return View(vm);
     }

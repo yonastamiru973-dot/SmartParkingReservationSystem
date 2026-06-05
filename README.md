@@ -60,8 +60,8 @@ Acceptance criteria mapping:
 | AC2.6  | Available = green                                                         | `.slot-card.status-available` in `site.css`                                     |
 | AC2.7  | Occupied = red                                                            | `.slot-card.status-occupied`                                                    |
 | AC2.8  | Maintenance = yellow                                                      | `.slot-card.status-maintenance`                                                 |
-| AC2.9  | Google Maps shows slots as markers                                        | `slots.js` `initMap()` (Maps JS API)                                            |
-| AC2.10 | Clicking a map marker shows slot details                                  | `slots.js` `buildInfoWindowContent()`                                           |
+| AC2.9  | Slots are shown on a map-style view as positioned tiles                   | Simulated **parking-lot floor view** in `slots.js` (`renderMap()`)              |
+| AC2.10 | Clicking a tile shows slot details                                        | In-page popover built by `slots.js` `buildPopoverContent()` / `openPopover()`   |
 | AC2.11 | Admin can manually change status                                          | Inline dropdown on `AdminSlots/Index` → `AdminSlotsController.SetStatus` (AJAX) |
 | AC2.12 | Filter by type (Standard, VIP, EV)                                        | `SlotsController.Index` + filter bar form                                       |
 | AC2.13 | Search by slot number                                                     | `SlotsController.Index` + `IParkingSlotService.SearchAsync`                     |
@@ -71,20 +71,27 @@ Acceptance criteria mapping:
 
 `DbSeeder.SeedSampleSlots` inserts 10 sample slots covering all 3 types (Standard / VIP / EV) and all 3 statuses (Available / Occupied / Maintenance) clustered around the map's default center, so the page is immediately populated after first run.
 
-### Google Maps configuration
+### Simulated parking-lot view (no external map service)
 
-Add your Google Maps JavaScript API key to `appsettings.json`:
+Sprint 2 ships with a **fully self-contained "floor-view" simulation** instead of an external map service like Google Maps:
+
+- Each slot is rendered as a color-coded tile on a stylized top-down lot, with its position derived from the slot's `Latitude` / `Longitude` (normalized to the bounding box of all visible slots).
+- Tile colors track the live status (green = Available, red = Occupied, amber = Maintenance).
+- Clicking a tile opens an in-page popover with the slot's number, status, type, hourly rate, optional notes, and coordinates — exactly mirroring the data you'd see in a Maps InfoWindow.
+- The same view auto-refreshes via AJAX every 5 seconds, so the lot, the grid cards, and the count pills all stay in sync without a reload.
+
+This means **no API key, no external script, no internet connection required**.
+
+The default lat/lng used to pre-fill the admin form is configurable:
 
 ```json
-"GoogleMaps": {
-  "ApiKey": "YOUR_GOOGLE_MAPS_API_KEY_HERE",
+"ParkingLot": {
   "DefaultLatitude": 40.7589,
-  "DefaultLongitude": -73.9851,
-  "DefaultZoom": 17
+  "DefaultLongitude": -73.9851
 }
 ```
 
-If the key is empty, the slot list still works in grid mode and shows a friendly "Map unavailable" notice on the map panel — useful while developing without an API key. The Maps JS API also requires the **Maps JavaScript API** to be enabled in your Google Cloud project.
+You can change these to your campus / facility's coordinates — they're stored on every slot and used to place tiles in the floor view.
 
 ### Upgrading an existing Sprint 1 database
 
@@ -299,8 +306,8 @@ This makes Sprint 1 testable end-to-end without configuring an SMTP server.
 | T2.5  | Inspect an Available slot card                                     | Green status dot, green border + label                               |
 | T2.6  | Inspect an Occupied slot card                                      | Red dot/border/label                                                 |
 | T2.7  | Inspect a Maintenance slot card                                    | Yellow/amber dot/border/label                                        |
-| T2.8  | With a valid `GoogleMaps:ApiKey`, refresh `/Slots`                  | Google Map loads and shows a marker per slot                         |
-| T2.9  | Click any map marker                                                | InfoWindow opens with number, status badge, type, rate, description  |
+| T2.8  | Refresh `/Slots`                                                    | Simulated lot view loads with a tile per slot, positioned by lat/lng |
+| T2.9  | Click any tile in the lot view                                      | Popover opens with number, status badge, type, rate, description     |
 | T2.10 | Apply **Type = Standard** filter                                    | Only Standard slots remain in the grid (and only their markers)      |
 | T2.11 | Apply **Type = VIP** filter                                         | Only VIP slots shown                                                 |
 | T2.12 | Search "A-01"                                                       | Only the matching slot is shown                                      |
@@ -335,8 +342,8 @@ This makes Sprint 1 testable end-to-end without configuring an SMTP server.
 - [x] All code committed to version control (Git)
 - [x] All acceptance criteria implemented
 - [x] Manual test plan documented above (T2.1 – T2.14)
-- [x] Google Maps API key configuration documented and working when supplied
-- [x] UI is responsive (filter bar collapses, map+grid stacks on mobile, table scrolls horizontally)
+- [x] Self-contained simulated lot view (no external map service / API key needed)
+- [x] UI is responsive (filter bar collapses, lot view + grid stacks on mobile, table scrolls horizontally)
 - [x] No critical/major bugs
 - [x] Database seeded with 10 sample parking slots covering all types and statuses
 - [ ] Code reviewed by team member *(team activity)*
