@@ -18,10 +18,13 @@
                 {
                     <a asp-controller="Home" asp-action="Dashboard">Dashboard</a>
                     <a asp-controller="Slots" asp-action="Index">Slots</a>
+                    <a asp-controller="Reservations" asp-action="Index">My Reservations</a>
                     <a asp-controller="Profile" asp-action="Index">My Profile</a>
                     if (CurrentUser.IsAdmin)
                     {
                         <a asp-controller="AdminSlots" asp-action="Index">Manage Slots</a>
+                        <a asp-controller="AdminReservations" asp-action="Index">Reservations</a>
+                        <a asp-controller="Scanner" asp-action="Index">Scanner</a>
                         <a asp-controller="Admin" asp-action="Users">Users</a>
                     }
                     <span class="nav-user">Hi, @CurrentUser.FullName</span>
