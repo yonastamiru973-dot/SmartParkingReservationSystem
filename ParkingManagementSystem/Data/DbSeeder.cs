@@ -11,9 +11,10 @@ public static class DbSeeder
     {
         db.Database.EnsureCreated();
 
-        // For dev databases created during Sprint 1 (before ParkingSlots existed), bring
-        // the schema up to date without forcing the user to wipe their database.
+        // For dev databases created during earlier sprints, bring the schema up to date
+        // without forcing the user to wipe their database. Each helper is idempotent.
         EnsureParkingSlotsTable(db);
+        EnsureReservationsTable(db);
 
         SeedAdmin(db, hasher);
         SeedSampleSlots(db);
@@ -80,6 +81,43 @@ public static class DbSeeder
             });
         }
         db.SaveChanges();
+    }
+
+    private static void EnsureReservationsTable(ApplicationDbContext db)
+    {
+        const string sql = @"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'Reservations')
+BEGIN
+    CREATE TABLE [Reservations] (
+        [Id] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+        [UserId] INT NOT NULL,
+        [SlotId] INT NOT NULL,
+        [StartTime] DATETIME2 NOT NULL,
+        [EndTime] DATETIME2 NOT NULL,
+        [Status] NVARCHAR(20) NOT NULL,
+        [Fee] DECIMAL(10,2) NOT NULL DEFAULT 0,
+        [ExtensionFee] DECIMAL(10,2) NOT NULL DEFAULT 0,
+        [ExtensionCount] INT NOT NULL DEFAULT 0,
+        [QrToken] NVARCHAR(256) NOT NULL,
+        [CreatedAt] DATETIME2 NOT NULL,
+        [EntryTime] DATETIME2 NULL,
+        [ExitTime] DATETIME2 NULL,
+        [CancelledAt] DATETIME2 NULL,
+        [ActualDuration] TIME NULL,
+        CONSTRAINT [FK_Reservations_Users] FOREIGN KEY ([UserId]) REFERENCES [Users]([Id]),
+        CONSTRAINT [FK_Reservations_ParkingSlots] FOREIGN KEY ([SlotId]) REFERENCES [ParkingSlots]([Id])
+    );
+
+    CREATE INDEX [IX_Reservations_UserId_StartTime]
+        ON [Reservations]([UserId], [StartTime]);
+
+    CREATE INDEX [IX_Reservations_SlotId_TimeRange_Status]
+        ON [Reservations]([SlotId], [StartTime], [EndTime], [Status]);
+
+    CREATE UNIQUE INDEX [IX_Reservations_QrToken]
+        ON [Reservations]([QrToken]);
+END";
+        db.Database.ExecuteSqlRaw(sql);
     }
 
     private static void EnsureParkingSlotsTable(ApplicationDbContext db)
