@@ -15,6 +15,11 @@
         <p>Browse available parking slots with a live floor-view and grid layout.</p>
     </a>
 
+    <a asp-controller="Reservations" asp-action="Index" class="card card-link">
+        <h3>My Reservations</h3>
+        <p>View active bookings, past history, and your QR entry codes.</p>
+    </a>
+
     <a asp-controller="Profile" asp-action="Index" class="card card-link">
         <h3>My Profile</h3>
         <p>View and update your personal and vehicle information.</p>
@@ -26,14 +31,17 @@
             <h3>Manage Slots</h3>
             <p>Add, edit, delete, and update the status of parking slots.</p>
         </a>
+        <a asp-controller="AdminReservations" asp-action="Index" class="card card-link">
+            <h3>All Reservations</h3>
+            <p>View and filter every reservation across the system.</p>
+        </a>
+        <a asp-controller="Scanner" asp-action="Index" class="card card-link">
+            <h3>QR Scanner</h3>
+            <p>Validate entry and exit scans for parking attendants.</p>
+        </a>
         <a asp-controller="Admin" asp-action="Users" class="card card-link">
             <h3>Manage Users</h3>
             <p>View all registered users on the platform.</p>
         </a>
     }
-
-    <div class="card">
-        <h3>Reservations</h3>
-        <p class="muted">Reservation features will be available in the next sprint.</p>
-    </div>
 </div>
