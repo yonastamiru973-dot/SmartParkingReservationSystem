@@ -1,0 +1,109 @@
+@model SlotsIndexViewModel
+@{
+    ViewData["Title"] = "Parking Slots";
+    var hasMapsKey = !string.IsNullOrWhiteSpace(Model.GoogleMapsApiKey);
+}
+
+<div class="page-header">
+    <div>
+        <h1>Parking Slots</h1>
+        <p class="muted">Pick a slot below or locate one on the map. Availability refreshes automatically.</p>
+    </div>
+    <div class="slot-counts">
+        <span class="count-pill count-available">@Model.AvailableCount available</span>
+        <span class="count-pill count-occupied">@Model.OccupiedCount occupied</span>
+        <span class="count-pill count-maintenance">@Model.MaintenanceCount maintenance</span>
+    </div>
+</div>
+
+<form method="get" class="filter-bar">
+    <div class="filter-field">
+        <label for="search">Search by slot number</label>
+        <input id="search" name="search" type="search" value="@Model.SearchTerm" placeholder="e.g. A-12" class="form-input" />
+    </div>
+    <div class="filter-field">
+        <label for="type">Type</label>
+        <select id="type" name="type" class="form-input">
+            <option value="">All types</option>
+            @foreach (var t in Enum.GetValues<SlotType>())
+            {
+                <option value="@t" selected="@(Model.TypeFilter == t)">@t</option>
+            }
+        </select>
+    </div>
+    <div class="filter-field">
+        <label for="status">Status</label>
+        <select id="status" name="status" class="form-input">
+            <option value="">Any status</option>
+            @foreach (var s in Enum.GetValues<SlotStatus>())
+            {
+                <option value="@s" selected="@(Model.StatusFilter == s)">@s</option>
+            }
+        </select>
+    </div>
+    <div class="filter-actions">
+        <button type="submit" class="btn btn-primary">Apply</button>
+        <a asp-action="Index" class="btn btn-secondary">Reset</a>
+    </div>
+</form>
+
+<section class="slots-layout">
+    <div class="map-wrap card">
+        @if (hasMapsKey)
+        {
+            <div id="slot-map"
+                 data-center-lat="@Model.MapDefaultLatitude.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                 data-center-lng="@Model.MapDefaultLongitude.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                 data-zoom="@Model.MapDefaultZoom"></div>
+        }
+        else
+        {
+            <div class="map-placeholder">
+                <h3>Map unavailable</h3>
+                <p class="muted">
+                    Add your Google Maps API key in <code>appsettings.json</code>
+                    under <code>GoogleMaps:ApiKey</code> to display the map.
+                </p>
+            </div>
+        }
+    </div>
+
+    <div class="slot-grid" id="slot-grid">
+        @if (Model.Slots.Count == 0)
+        {
+            <div class="card slot-empty">
+                <h3>No slots found</h3>
+                <p class="muted">Try changing your search or filters.</p>
+            </div>
+        }
+        else
+        {
+            @foreach (var slot in Model.Slots)
+            {
+                <partial name="_SlotCard" model="slot" />
+            }
+        }
+    </div>
+</section>
+
+<div id="slot-data"
+     data-status-url="@Url.Action("Status", "Slots", new { search = Model.SearchTerm, type = Model.TypeFilter, status = Model.StatusFilter })"
+     data-slots-json="@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Slots.Select(s => new {
+         id = s.Id,
+         slotNumber = s.SlotNumber,
+         slotType = s.SlotType.ToString(),
+         status = s.Status.ToString(),
+         hourlyRate = s.HourlyRate,
+         latitude = s.Latitude,
+         longitude = s.Longitude,
+         description = s.Description
+     })))"></div>
+
+@section Scripts {
+    <script src="~/js/slots.js" asp-append-version="true"></script>
+    @if (hasMapsKey)
+    {
+        <script async defer
+                src="https://maps.googleapis.com/maps/api/js?key=@Model.GoogleMapsApiKey&callback=initSlotsMap"></script>
+    }
+}

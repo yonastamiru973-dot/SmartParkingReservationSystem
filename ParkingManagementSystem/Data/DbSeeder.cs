@@ -1,4 +1,6 @@
+using Microsoft.EntityFrameworkCore;
 using ParkingManagementSystem.Models;
+using ParkingManagementSystem.Models.Enums;
 using ParkingManagementSystem.Services;
 
 namespace ParkingManagementSystem.Data;
@@ -9,21 +11,100 @@ public static class DbSeeder
     {
         db.Database.EnsureCreated();
 
-        if (!db.Users.Any(u => u.Role == "Admin"))
+        // For dev databases created during Sprint 1 (before ParkingSlots existed), bring
+        // the schema up to date without forcing the user to wipe their database.
+        EnsureParkingSlotsTable(db);
+
+        SeedAdmin(db, hasher);
+        SeedSampleSlots(db);
+    }
+
+    private static void SeedAdmin(ApplicationDbContext db, IPasswordHasher hasher)
+    {
+        if (db.Users.Any(u => u.Role == "Admin")) return;
+
+        db.Users.Add(new User
         {
-            var admin = new User
+            FullName = "System Administrator",
+            Email = "admin@parking.local",
+            PhoneNumber = "0000000000",
+            VehiclePlateNumber = "ADMIN-001",
+            PasswordHash = hasher.Hash("Admin@123"),
+            Role = "Admin",
+            CreatedAt = DateTime.UtcNow,
+            IsActive = true
+        });
+        db.SaveChanges();
+    }
+
+    private static void SeedSampleSlots(ApplicationDbContext db)
+    {
+        if (db.ParkingSlots.Any()) return;
+
+        // Sample slots arranged around a central point so the map shows a realistic cluster.
+        const double centerLat = 40.7589;
+        const double centerLng = -73.9851;
+
+        var samples = new[]
+        {
+            ("A-01", SlotType.Standard, SlotStatus.Available,   5.00m, 0.00010, 0.00015),
+            ("A-02", SlotType.Standard, SlotStatus.Occupied,    5.00m, 0.00010, 0.00030),
+            ("A-03", SlotType.Standard, SlotStatus.Available,   5.00m, 0.00010, 0.00045),
+            ("A-04", SlotType.Standard, SlotStatus.Maintenance, 5.00m, 0.00010, 0.00060),
+            ("B-01", SlotType.VIP,      SlotStatus.Available,  12.00m,-0.00010, 0.00015),
+            ("B-02", SlotType.VIP,      SlotStatus.Occupied,   12.00m,-0.00010, 0.00030),
+            ("B-03", SlotType.VIP,      SlotStatus.Available,  12.00m,-0.00010, 0.00045),
+            ("C-01", SlotType.EV,       SlotStatus.Available,   8.50m,-0.00025, 0.00015),
+            ("C-02", SlotType.EV,       SlotStatus.Available,   8.50m,-0.00025, 0.00030),
+            ("C-03", SlotType.EV,       SlotStatus.Maintenance, 8.50m,-0.00025, 0.00045)
+        };
+
+        foreach (var (number, type, status, rate, dLat, dLng) in samples)
+        {
+            db.ParkingSlots.Add(new ParkingSlot
             {
-                FullName = "System Administrator",
-                Email = "admin@parking.local",
-                PhoneNumber = "0000000000",
-                VehiclePlateNumber = "ADMIN-001",
-                PasswordHash = hasher.Hash("Admin@123"),
-                Role = "Admin",
-                CreatedAt = DateTime.UtcNow,
-                IsActive = true
-            };
-            db.Users.Add(admin);
-            db.SaveChanges();
+                SlotNumber = number,
+                SlotType = type,
+                Status = status,
+                HourlyRate = rate,
+                Latitude = centerLat + dLat,
+                Longitude = centerLng + dLng,
+                Description = type switch
+                {
+                    SlotType.VIP => "Premium covered slot with extra clearance.",
+                    SlotType.EV  => "Includes Type-2 EV charging connector.",
+                    _            => null
+                },
+                IsDeleted = false,
+                CreatedAt = DateTime.UtcNow
+            });
         }
+        db.SaveChanges();
+    }
+
+    private static void EnsureParkingSlotsTable(ApplicationDbContext db)
+    {
+        const string sql = @"
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'ParkingSlots')
+BEGIN
+    CREATE TABLE [ParkingSlots] (
+        [Id] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+        [SlotNumber] NVARCHAR(20) NOT NULL,
+        [SlotType] NVARCHAR(20) NOT NULL,
+        [Status] NVARCHAR(20) NOT NULL,
+        [HourlyRate] DECIMAL(10,2) NOT NULL,
+        [Latitude] FLOAT NOT NULL,
+        [Longitude] FLOAT NOT NULL,
+        [Description] NVARCHAR(500) NULL,
+        [IsDeleted] BIT NOT NULL DEFAULT 0,
+        [CreatedAt] DATETIME2 NOT NULL,
+        [UpdatedAt] DATETIME2 NULL,
+        [DeletedAt] DATETIME2 NULL
+    );
+    CREATE UNIQUE INDEX [IX_ParkingSlots_SlotNumber]
+        ON [ParkingSlots]([SlotNumber])
+        WHERE [IsDeleted] = 0;
+END";
+        db.Database.ExecuteSqlRaw(sql);
     }
 }

@@ -1,0 +1,71 @@
+@model IReadOnlyList<ParkingSlot>
+@{
+    ViewData["Title"] = "Manage Parking Slots";
+}
+
+<div class="page-header">
+    <div>
+        <h1>Parking Slots</h1>
+        <p class="muted">Manage the parking layout, pricing, and status of each slot.</p>
+    </div>
+    <a asp-action="Create" class="btn btn-primary">+ New slot</a>
+</div>
+
+<div class="card">
+    @if (Model.Count == 0)
+    {
+        <p class="muted">No parking slots yet. Click "New slot" to add the first one.</p>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data-table" id="admin-slots-table">
+                <thead>
+                    <tr>
+                        <th>Slot #</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Hourly Rate</th>
+                        <th>Location</th>
+                        <th>Updated</th>
+                        <th class="actions-col">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in Model)
+                    {
+                        <tr data-slot-id="@s.Id">
+                            <td><strong>@s.SlotNumber</strong></td>
+                            <td><span class="slot-type-tag type-@s.SlotType.ToString().ToLower()">@s.SlotType</span></td>
+                            <td>
+                                <form class="status-form" data-slot-id="@s.Id">
+                                    @Html.AntiForgeryToken()
+                                    <select name="status" class="form-input status-select status-@s.Status.ToString().ToLower()">
+                                        @foreach (var st in Enum.GetValues<SlotStatus>())
+                                        {
+                                            <option value="@st" selected="@(st == s.Status)">@st</option>
+                                        }
+                                    </select>
+                                    <span class="status-feedback" aria-live="polite"></span>
+                                </form>
+                            </td>
+                            <td>@s.HourlyRate.ToString("C")</td>
+                            <td class="muted">
+                                @s.Latitude.ToString("F5"), @s.Longitude.ToString("F5")
+                            </td>
+                            <td class="muted">@((s.UpdatedAt ?? s.CreatedAt).ToString("yyyy-MM-dd HH:mm"))</td>
+                            <td class="actions-col">
+                                <a asp-action="Edit" asp-route-id="@s.Id" class="btn btn-secondary btn-sm">Edit</a>
+                                <a asp-action="Delete" asp-route-id="@s.Id" class="btn btn-danger btn-sm">Delete</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script src="~/js/admin-slots.js" asp-append-version="true"></script>
+}

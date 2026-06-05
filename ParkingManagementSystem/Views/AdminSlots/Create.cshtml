@@ -1,0 +1,69 @@
+@model ParkingSlotFormViewModel
+@{
+    ViewData["Title"] = "New Parking Slot";
+}
+
+<div class="page-header">
+    <h1>New Parking Slot</h1>
+    <a asp-action="Index" class="btn btn-secondary">Back to list</a>
+</div>
+
+<div class="card narrow">
+    <form asp-action="Create" method="post" novalidate>
+        <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+
+        <div class="form-grid-2">
+            <div class="form-row">
+                <label asp-for="SlotNumber"></label>
+                <input asp-for="SlotNumber" class="form-input" placeholder="e.g. A-12" />
+                <span asp-validation-for="SlotNumber" class="field-error"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="SlotType"></label>
+                <select asp-for="SlotType" class="form-input" asp-items="Html.GetEnumSelectList<SlotType>()"></select>
+                <span asp-validation-for="SlotType" class="field-error"></span>
+            </div>
+        </div>
+
+        <div class="form-grid-2">
+            <div class="form-row">
+                <label asp-for="Status"></label>
+                <select asp-for="Status" class="form-input" asp-items="Html.GetEnumSelectList<SlotStatus>()"></select>
+                <span asp-validation-for="Status" class="field-error"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="HourlyRate"></label>
+                <input asp-for="HourlyRate" class="form-input" type="number" step="0.01" min="0.01" />
+                <span asp-validation-for="HourlyRate" class="field-error"></span>
+            </div>
+        </div>
+
+        <div class="form-grid-2">
+            <div class="form-row">
+                <label asp-for="Latitude"></label>
+                <input asp-for="Latitude" class="form-input" type="number" step="0.000001" />
+                <span asp-validation-for="Latitude" class="field-error"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="Longitude"></label>
+                <input asp-for="Longitude" class="form-input" type="number" step="0.000001" />
+                <span asp-validation-for="Longitude" class="field-error"></span>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <label asp-for="Description"></label>
+            <textarea asp-for="Description" class="form-input" rows="3" placeholder="Optional notes about this slot..."></textarea>
+            <span asp-validation-for="Description" class="field-error"></span>
+        </div>
+
+        <div class="form-actions">
+            <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">Create slot</button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

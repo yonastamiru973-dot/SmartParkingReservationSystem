@@ -9,6 +9,7 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<User> Users => Set<User>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
+    public DbSet<ParkingSlot> ParkingSlots => Set<ParkingSlot>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -33,6 +34,20 @@ public class ApplicationDbContext : DbContext
                   .WithMany(u => u.PasswordResetTokens)
                   .HasForeignKey(t => t.UserId)
                   .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ParkingSlot>(entity =>
+        {
+            entity.Property(s => s.SlotNumber).HasMaxLength(20).IsRequired();
+            entity.Property(s => s.SlotType).HasConversion<string>().HasMaxLength(20);
+            entity.Property(s => s.Status).HasConversion<string>().HasMaxLength(20);
+            entity.Property(s => s.HourlyRate).HasColumnType("decimal(10,2)");
+            entity.Property(s => s.Description).HasMaxLength(500);
+
+            // Unique slot number among non-deleted rows (allows reusing a number after soft-delete).
+            entity.HasIndex(s => s.SlotNumber)
+                  .IsUnique()
+                  .HasFilter("[IsDeleted] = 0");
         });
     }
 }

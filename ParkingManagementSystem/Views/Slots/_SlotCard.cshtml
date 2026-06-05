@@ -1,0 +1,26 @@
+@model ParkingSlot
+@{
+    var statusClass = Model.Status switch
+    {
+        SlotStatus.Available   => "status-available",
+        SlotStatus.Occupied    => "status-occupied",
+        SlotStatus.Maintenance => "status-maintenance",
+        _ => string.Empty
+    };
+}
+
+<article class="slot-card @statusClass" data-slot-id="@Model.Id" data-slot-number="@Model.SlotNumber">
+    <header class="slot-card-head">
+        <span class="slot-status-dot" aria-hidden="true"></span>
+        <span class="slot-status-label">@Model.Status</span>
+        <span class="slot-type-tag type-@Model.SlotType.ToString().ToLower()">@Model.SlotType</span>
+    </header>
+    <div class="slot-number">@Model.SlotNumber</div>
+    <div class="slot-meta">
+        <span class="slot-rate">@Model.HourlyRate.ToString("C") /hr</span>
+    </div>
+    @if (!string.IsNullOrWhiteSpace(Model.Description))
+    {
+        <p class="slot-desc muted">@Model.Description</p>
+    }
+</article>
