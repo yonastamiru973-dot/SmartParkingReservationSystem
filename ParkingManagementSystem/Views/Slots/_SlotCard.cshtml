@@ -23,4 +23,15 @@
     {
         <p class="slot-desc muted">@Model.Description</p>
     }
+    @if (CurrentUser.IsAuthenticated && Model.Status == SlotStatus.Available)
+    {
+        <a asp-controller="Reservations" asp-action="Create" asp-route-slotId="@Model.Id"
+           class="btn btn-primary btn-sm btn-block slot-reserve-btn">Reserve</a>
+    }
+    else if (!CurrentUser.IsAuthenticated && Model.Status == SlotStatus.Available)
+    {
+        <a asp-controller="Account" asp-action="Login"
+           asp-route-returnUrl="@Url.Action("Create", "Reservations", new { slotId = Model.Id })"
+           class="btn btn-secondary btn-sm btn-block slot-reserve-btn">Sign in to reserve</a>
+    }
 </article>
