@@ -516,7 +516,7 @@ p { margin: 0 0 .75rem 0; }
     .slots-layout { grid-template-columns: 1fr; }
 }
 
-/* ===== Simulated parking-lot view (no Google Maps) ===== */
+/* ===== Simulated parking-lot floor view ===== */
 
 .lot-card { display: flex; flex-direction: column; gap: .75rem; }
 .lot-card-head {
@@ -781,32 +781,6 @@ p { margin: 0 0 .75rem 0; }
 .type-standard { background: #e0e7ff; color: #3730a3; }
 .type-vip      { background: #fae8ff; color: #86198f; }
 .type-ev       { background: #d1fae5; color: #065f46; }
-
-/* Info window inside Google Maps */
-.gmap-iw {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    min-width: 180px;
-}
-.gmap-iw-number {
-    font-weight: 800;
-    font-size: 1.05rem;
-    margin-bottom: .25rem;
-    font-family: ui-monospace, Menlo, Consolas, monospace;
-}
-.gmap-iw-row { font-size: .85rem; color: #475569; margin: .15rem 0; }
-.gmap-iw-row strong { color: #1f2937; }
-.gmap-iw-status {
-    display: inline-block;
-    padding: .15rem .5rem;
-    border-radius: 999px;
-    font-size: .7rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .04em;
-}
-.gmap-iw-status.available   { background: #dcfce7; color: #166534; }
-.gmap-iw-status.occupied    { background: #fee2e2; color: #991b1b; }
-.gmap-iw-status.maintenance { background: #fef3c7; color: #92400e; }
 
 /* Admin status dropdown coloring */
 .status-form { display: flex; align-items: center; gap: .35rem; margin: 0; }

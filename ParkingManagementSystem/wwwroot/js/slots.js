@@ -50,7 +50,7 @@
         };
     }
 
-    // Maps a slot's lat/lng to a (x%, y%) position inside the lot view.
+    // Converts a slot's lat/lng to an (x%, y%) position inside the lot view.
     // Higher latitude renders nearer the top (north-up).
     function positionFor(slot, bounds) {
         var pad = 9;
