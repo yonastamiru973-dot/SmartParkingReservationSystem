@@ -1,0 +1,41 @@
+@model ProfileViewModel
+@{
+    ViewData["Title"] = "My Profile";
+}
+
+<div class="page-header">
+    <div>
+        <h1>My Profile</h1>
+        <p class="muted">Your personal and vehicle information.</p>
+    </div>
+    <a asp-action="Edit" class="btn btn-primary">Edit profile</a>
+</div>
+
+<div class="card profile-card">
+    <dl class="info-list">
+        <div class="info-row">
+            <dt>Full Name</dt>
+            <dd>@Model.FullName</dd>
+        </div>
+        <div class="info-row">
+            <dt>Email</dt>
+            <dd>@Model.Email</dd>
+        </div>
+        <div class="info-row">
+            <dt>Phone Number</dt>
+            <dd>@Model.PhoneNumber</dd>
+        </div>
+        <div class="info-row">
+            <dt>Vehicle Plate</dt>
+            <dd><span class="plate-badge">@Model.VehiclePlateNumber</span></dd>
+        </div>
+        <div class="info-row">
+            <dt>Role</dt>
+            <dd>@Model.Role</dd>
+        </div>
+        <div class="info-row">
+            <dt>Member Since</dt>
+            <dd>@Model.CreatedAt.ToString("MMMM d, yyyy")</dd>
+        </div>
+    </dl>
+</div>
