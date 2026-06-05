@@ -2,7 +2,7 @@
 
 A web application for reserving and managing parking spots, built with **ASP.NET Core MVC 8.0**, **Entity Framework Core**, and **SQL Server**.
 
-This repository currently implements **Sprint 1 — Project Setup & User Authentication** and **Sprint 2 — Parking Slot Management & Availability**.
+This repository currently implements **Sprint 1 — Project Setup & User Authentication**, **Sprint 2 — Parking Slot Management & Availability**, and **Sprint 3 — Reservation System & Time Tracking**.
 
 ---
 
@@ -99,12 +99,80 @@ If you ran Sprint 1 earlier, your database already exists and `EnsureCreated()` 
 
 ---
 
+## Sprint 3 — what's included
+
+User stories covered:
+
+| ID    | User Story                                                                          |
+| ----- | ----------------------------------------------------------------------------------- |
+| US3.1 | As a user, I want to reserve an available parking slot for a specific date and time. |
+| US3.2 | As a user, I want to view my active and past reservations.                         |
+| US3.3 | As a user, I want to cancel a reservation before the start time.                    |
+| US3.4 | As a user, I want to receive a QR code after successful reservation.                |
+| US3.5 | As an admin, I want to view all reservations and their statuses.                    |
+| US3.6 | As a user, I want to extend my parking time remotely.                                |
+
+Acceptance criteria mapping:
+
+| AC#    | Acceptance Criteria                                                       | Where it's implemented                                                          |
+| ------ | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| AC3.1  | Select slot, date, start time, duration (30 min – 24 h)                   | `Reservations/Create` + `CreateReservationViewModel`                            |
+| AC3.2  | Estimated fee shown before confirmation                                   | `CreateReservationViewModel.EstimatedFee` + `reservation-create.js`           |
+| AC3.3  | Double-booking prevented                                                  | `ReservationService.CreateAsync` (SERIALIZABLE tx + overlap query)              |
+| AC3.4  | Past start time rejected                                                  | `ReservationService.CreateAsync` + model validation                             |
+| AC3.5  | Unique QR code generated after confirmation                               | `QrCodeService.GenerateSvg` on `Reservations/Details`                             |
+| AC3.6  | QR contains reservation ID, user ID, slot ID, times, HMAC signature       | `QrCodeService.CreateToken` → `RES\|{id}\|{user}\|{slot}\|{ticks}\|{sig}`       |
+| AC3.7  | QR expires 15 minutes after start time                                    | `ProcessEntryScanAsync` + `Reservations:QrGracePeriodMinutes`                   |
+| AC3.8  | User views active reservations                                            | `Reservations/Index` → Active tab                                               |
+| AC3.9  | User views past reservations with duration and fee                        | `Reservations/Index` → Past tab + `_ReservationRow`                             |
+| AC3.10 | Cancel up to 15 minutes before start                                      | `ReservationService.CancelAsync` + `Reservations:CancelWindowMinutes`           |
+| AC3.11 | Admin views all reservations with filters                                 | `AdminReservations/Index` (date, status, user search)                         |
+| AC3.12 | Attendant scans QR to validate entry                                      | `Scanner/Index` + `ProcessEntryScanAsync`                                       |
+| AC3.13 | Scanner shows user name, slot number, valid time window                   | `Scanner/Index` scan result banner                                              |
+| AC3.14 | Entry time logged on scan                                                 | `ProcessEntryScanAsync` sets `EntryTime` + `Status = Active`                    |
+| AC3.15 | Actual duration calculated on exit                                        | `ProcessExitScanAsync` sets `ActualDuration = ExitTime - EntryTime`             |
+| AC3.16 | Extend parking before expiry                                              | `Reservations/Extend` + `ReservationService.ExtendAsync`                        |
+| AC3.17 | Extension fee calculated correctly                                        | `PricingService.CalculateFee` applied to additional minutes                     |
+
+### QR code format
+
+Each QR encodes a self-contained HMAC-SHA256 signed token:
+
+```
+RES|{reservationId}|{userId}|{slotId}|{startTicks}|{endTicks}|{signature}
+```
+
+- Generated with **QRCoder** (SVG output).
+- Verified on every scan; tampered tokens are rejected.
+- Set `Reservations:QrSecret` in `appsettings.json` to a long random value in production.
+
+### Automatic status transitions
+
+`ReservationStatusUpdater` (background service, runs every 60 s):
+
+| From       | To        | Condition                                              |
+| ---------- | --------- | ------------------------------------------------------ |
+| Confirmed  | Expired   | Start time + 15 min grace passed with no entry scan    |
+| Active     | Completed | Planned `EndTime` passed (auto-exit if no exit scan)   |
+
+### Scanner
+
+`/scanner` (admin role) provides:
+
+- **Camera scan** via `html5-qrcode` (works on mobile + desktop webcam).
+- **Manual token paste** fallback when camera is unavailable.
+- Entry / Exit toggle for attendants.
+
+---
+
 ## Tech stack
 
 - **ASP.NET Core 8.0 MVC** — Controllers, Views (Razor), Models
 - **Entity Framework Core 8** — `Microsoft.EntityFrameworkCore.SqlServer`
 - **SQL Server LocalDB** — default connection string (overridable in `appsettings.json`)
 - **BCrypt.Net-Next** — secure password hashing
+- **QRCoder** — QR code SVG generation for reservation entry
+- **html5-qrcode** — camera-based QR scanning for attendants
 - **ASP.NET Core Session** — server-side session for authentication state
 - Built-in **data annotation** validation + **jQuery unobtrusive** client-side validation
 
@@ -120,21 +188,23 @@ ParkingManagementSystem/
 │   ├── ProfileController.cs     # View/edit own profile
 │   ├── AdminController.cs       # Admin-only: list all users
 │   ├── SlotsController.cs       # Public slot listing + JSON live-status feed
-│   └── AdminSlotsController.cs  # Admin-only slot CRUD + status toggle
+│   ├── AdminSlotsController.cs  # Admin-only slot CRUD + status toggle
+│   ├── ReservationsController.cs # User reservation CRUD, cancel, extend
+│   ├── AdminReservationsController.cs # Admin reservation list + filters
+│   └── ScannerController.cs     # QR entry/exit scanner for attendants
 ├── Models/
 │   ├── User.cs
 │   ├── PasswordResetToken.cs
 │   ├── ParkingSlot.cs
-│   ├── Enums/{SlotType.cs, SlotStatus.cs}
+│   ├── Reservation.cs
+│   ├── Enums/{SlotType, SlotStatus, ReservationStatus}.cs
 │   ├── ErrorViewModel.cs
 │   └── ViewModels/
-│       ├── RegisterViewModel.cs
-│       ├── LoginViewModel.cs
-│       ├── ForgotPasswordViewModel.cs
-│       ├── ResetPasswordViewModel.cs
-│       ├── ProfileViewModel.cs
-│       ├── ParkingSlotFormViewModel.cs
-│       └── SlotsIndexViewModel.cs
+│       ├── RegisterViewModel.cs … ProfileViewModel.cs
+│       ├── ParkingSlotFormViewModel.cs / SlotsIndexViewModel.cs
+│       ├── CreateReservationViewModel.cs / ReservationDetailsViewModel.cs
+│       ├── MyReservationsViewModel.cs / ExtendReservationViewModel.cs
+│       ├── AdminReservationsViewModel.cs / ScannerViewModel.cs
 ├── Data/
 │   ├── ApplicationDbContext.cs  # EF Core DbContext + model configuration
 │   └── DbSeeder.cs              # Creates default admin on startup
@@ -143,7 +213,11 @@ ParkingManagementSystem/
 │   ├── IPasswordHasher.cs / PasswordHasher.cs # BCrypt hashing
 │   ├── IEmailService.cs / EmailService.cs     # Dev: file log; Prod: SMTP
 │   ├── ICurrentUserService.cs                 # Session-backed current user info
-│   └── IParkingSlotService.cs / ParkingSlotService.cs # Slot CRUD, search/filter, status updates
+│   ├── IParkingSlotService.cs / ParkingSlotService.cs # Slot CRUD, search/filter, status updates
+│   ├── IReservationService.cs / ReservationService.cs # Booking, cancel, extend, scan, status sweep
+│   ├── IQrCodeService.cs / QrCodeService.cs   # HMAC-signed QR tokens + SVG generation
+│   ├── IPricingService.cs / PricingService.cs # Hourly fee calculation
+│   └── Hosted/ReservationStatusUpdater.cs   # Background status auto-transition
 ├── Filters/
 │   └── SessionAuthorizeAttribute.cs           # Session-based authorization filter
 ├── Views/
@@ -154,10 +228,13 @@ ParkingManagementSystem/
 │   ├── Profile/{Index, Edit}.cshtml
 │   ├── Admin/Users.cshtml
 │   ├── Slots/{Index, _SlotCard}.cshtml
-│   └── AdminSlots/{Index, Create, Edit, Delete}.cshtml
+│   ├── AdminSlots/{Index, Create, Edit, Delete}.cshtml
+│   ├── Reservations/{Index, Create, Details, Cancel, Extend, _ReservationRow}.cshtml
+│   ├── AdminReservations/Index.cshtml
+│   └── Scanner/Index.cshtml
 ├── wwwroot/
 │   ├── css/site.css
-│   ├── js/{slots.js, admin-slots.js}
+│   ├── js/{slots.js, admin-slots.js, reservations.js, reservation-create.js, reservation-extend.js, scanner.js}
 │   └── lib/  (jQuery + jQuery validation)
 ├── App_Data/                    # Dev mode: password-reset-emails.log
 ├── Program.cs                   # DI, EF Core, session, seeding, MVC routing
@@ -213,6 +290,28 @@ Created via `EF Core` with `Database.EnsureCreated()` on startup (no migrations 
 | `CreatedAt`   | DATETIME2 (UTC)     |                                                                                  |
 | `UpdatedAt`   | DATETIME2 NULL      |                                                                                  |
 | `DeletedAt`   | DATETIME2 NULL      |                                                                                  |
+
+### `Reservations`
+
+| Column           | Type                | Notes                                                                 |
+| ---------------- | ------------------- | --------------------------------------------------------------------- |
+| `Id`             | INT, PK, Identity   |                                                                       |
+| `UserId`         | INT, FK → Users     | Restrict delete                                                       |
+| `SlotId`         | INT, FK → ParkingSlots | Restrict delete                                                    |
+| `StartTime`      | DATETIME2           | Planned start (local)                                                 |
+| `EndTime`        | DATETIME2           | Planned end (local); updated on extension                             |
+| `Status`         | NVARCHAR(20)        | `Confirmed`, `Active`, `Completed`, `Cancelled`, `Expired`            |
+| `Fee`            | DECIMAL(10,2)       | Base fee at booking                                                   |
+| `ExtensionFee`   | DECIMAL(10,2)       | Cumulative extension top-ups                                          |
+| `ExtensionCount` | INT                 | Number of extensions applied                                          |
+| `QrToken`        | NVARCHAR(256)       | HMAC-signed token encoded in QR; **unique index**                     |
+| `CreatedAt`      | DATETIME2 (UTC)     |                                                                       |
+| `EntryTime`      | DATETIME2 NULL      | Set on entry scan                                                     |
+| `ExitTime`       | DATETIME2 NULL      | Set on exit scan or auto-completion                                   |
+| `CancelledAt`    | DATETIME2 NULL      | Set on user cancellation                                              |
+| `ActualDuration` | TIME NULL           | `ExitTime - EntryTime`                                                |
+
+**Indexes:** `(UserId, StartTime)`, `(SlotId, StartTime, EndTime, Status)`, unique `(QrToken)`.
 
 ### Default seed data
 
@@ -314,6 +413,28 @@ This makes Sprint 1 testable end-to-end without configuring an SMTP server.
 | T2.13 | As admin, change a slot's status via the inline dropdown            | "Saved" feedback, color updates instantly without a page reload      |
 | T2.14 | Open `/Slots` in two browsers; in admin, change a slot's status     | Both browsers reflect the new status within ≤ 5s (AJAX poll)         |
 
+### Sprint 3 manual test plan
+
+| Test  | Steps                                                              | Expected                                                             |
+| ----- | ------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| T3.1  | Reserve an available slot with valid date/time/duration              | Reservation created; redirect to Details with QR                   |
+| T3.2  | Reserve a slot already booked for the same window                  | "Already reserved during the selected time window" error             |
+| T3.3  | Reserve with a start time in the past                              | "Start time must be in the future" validation error                  |
+| T3.4  | View reservation Details after booking                             | QR code SVG displayed and scannable                                  |
+| T3.5  | Decode QR / view raw token                                         | Contains reservation ID, user ID, slot ID, times, signature        |
+| T3.6  | Open **My Reservations → Active** tab                              | New reservation listed with correct slot, times, fee                 |
+| T3.7  | Complete/expire a reservation; check **Past** tab                  | Shows duration and total fee                                         |
+| T3.8  | Cancel a Confirmed reservation > 15 min before start               | Status → Cancelled; QR invalidated                                   |
+| T3.9  | Try to cancel within 15 min of start                               | "Can only be cancelled up to 15 minutes before start" error          |
+| T3.10 | Admin scans valid QR (Entry) at `/scanner`                         | Success; entry time logged; status → Active                          |
+| T3.11 | Scan QR after start + 15 min grace with no prior entry             | "QR code has expired" error                                          |
+| T3.12 | Scan same QR again for entry after already checked in              | "Already checked in" error                                           |
+| T3.13 | Scan QR (Exit) after entry                                         | Exit logged; actual duration calculated; status → Completed          |
+| T3.14 | Extend an active reservation before EndTime                        | End time pushed; extension fee added; QR reissued                    |
+| T3.15 | Try to extend after EndTime has passed                             | "Already ended and cannot be extended" error                         |
+| T3.16 | Admin opens `/admin/reservations` with filters                     | Full list with user, slot, status, entry/exit, duration              |
+| T3.17 | Two users simultaneously book the same slot/time                   | Only one succeeds (SERIALIZABLE transaction prevents double-book)    |
+
 ---
 
 ## Security notes
@@ -324,6 +445,9 @@ This makes Sprint 1 testable end-to-end without configuring an SMTP server.
 - Session cookie is `HttpOnly` and marked essential. Idle timeout: 60 minutes.
 - Unauthenticated access to authenticated areas is redirected to the login page with a `returnUrl`.
 - Admin-only areas are gated by a role check on the session-backed identity.
+- Reservation QR tokens are **HMAC-SHA256 signed** (`QrCodeService`). Tampered or forged tokens are rejected on scan.
+- Double-booking is prevented with a **SERIALIZABLE** database transaction and overlap query on `(SlotId, StartTime, EndTime, Status)`.
+- Set `Reservations:QrSecret` to a long random value in production (never commit real secrets).
 
 ---
 
@@ -346,5 +470,17 @@ This makes Sprint 1 testable end-to-end without configuring an SMTP server.
 - [x] UI is responsive (filter bar collapses, lot view + grid stacks on mobile, table scrolls horizontally)
 - [x] No critical/major bugs
 - [x] Database seeded with 10 sample parking slots covering all types and statuses
+- [ ] Code reviewed by team member *(team activity)*
+- [ ] Sprint retrospective completed *(team activity)*
+
+## Definition of Done — Sprint 3
+
+- [x] All code committed to version control (Git)
+- [x] All acceptance criteria implemented
+- [x] Manual test plan documented above (T3.1 – T3.17)
+- [x] QRCoder library integrated; QR SVG generated on reservation Details
+- [x] Scanner interface works on mobile and desktop (camera + manual fallback)
+- [x] No critical/major bugs
+- [x] Database indexes on `Reservations` (user, slot+time range, unique QR token)
 - [ ] Code reviewed by team member *(team activity)*
 - [ ] Sprint retrospective completed *(team activity)*
