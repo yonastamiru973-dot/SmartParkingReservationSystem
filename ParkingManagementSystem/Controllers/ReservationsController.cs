@@ -66,7 +66,6 @@ public class ReservationsController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(CreateReservationViewModel model)
     {
-        // Always re-hydrate the slot context for re-displaying the form.
         var slot = await _db.ParkingSlots.FirstOrDefaultAsync(s => s.Id == model.SlotId && !s.IsDeleted);
         if (slot != null)
         {
@@ -85,8 +84,103 @@ public class ReservationsController : Controller
             return View(model);
         }
 
-        TempData["SuccessMessage"] = $"Reservation confirmed for slot {result.Value.Slot?.SlotNumber}.";
-        return RedirectToAction(nameof(Details), new { id = result.Value.Id });
+        return RedirectToAction(nameof(Payment), new { id = result.Value.Id, purpose = PaymentPurpose.Booking });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Payment(int id, PaymentPurpose purpose = PaymentPurpose.Booking, int? minutes = null)
+    {
+        var r = await _reservations.GetByIdForUserAsync(id, _currentUser.UserId!.Value);
+        if (r == null) return NotFound();
+
+        if (purpose == PaymentPurpose.Booking)
+        {
+            if (r.Status != ReservationStatus.PendingPayment)
+            {
+                TempData["ErrorMessage"] = "This reservation has already been paid.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            return View(new PaymentViewModel
+            {
+                ReservationId = r.Id,
+                Purpose = PaymentPurpose.Booking,
+                Amount = r.Fee,
+                SlotNumber = r.Slot?.SlotNumber ?? string.Empty,
+                StartTime = r.StartTime,
+                EndTime = r.EndTime
+            });
+        }
+
+        // Extension payment preview
+        if (r.Status != ReservationStatus.Confirmed && r.Status != ReservationStatus.Active)
+        {
+            TempData["ErrorMessage"] = "This reservation cannot be extended.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+        if (!minutes.HasValue || minutes.Value <= 0)
+        {
+            TempData["ErrorMessage"] = "Invalid extension duration.";
+            return RedirectToAction(nameof(Extend), new { id });
+        }
+
+        var fee = await _reservations.PreviewExtensionFeeAsync(id, _currentUser.UserId!.Value, minutes.Value);
+        return View(new PaymentViewModel
+        {
+            ReservationId = r.Id,
+            Purpose = PaymentPurpose.Extension,
+            AdditionalMinutes = minutes,
+            Amount = fee,
+            SlotNumber = r.Slot?.SlotNumber ?? string.Empty,
+            StartTime = r.StartTime,
+            EndTime = r.EndTime.AddMinutes(minutes.Value)
+        });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Payment(PaymentViewModel model)
+    {
+        if (!ModelState.IsValid) return View(model);
+
+        if (model.Purpose == PaymentPurpose.Booking)
+        {
+            var result = await _reservations.ConfirmPaymentAsync(model.ReservationId, _currentUser.UserId!.Value);
+            if (!result.Succeeded || result.Value is null)
+            {
+                ModelState.AddModelError(string.Empty, result.Error ?? "Payment could not be completed.");
+                return View(model);
+            }
+
+            TempData["SuccessMessage"] =
+                $"Payment successful! Reference: {result.Value.PaymentReference}. Your QR code is ready.";
+            return RedirectToAction(nameof(Details), new { id = model.ReservationId });
+        }
+
+        // Extension: apply after simulated payment
+        if (!model.AdditionalMinutes.HasValue)
+        {
+            ModelState.AddModelError(string.Empty, "Extension duration is missing.");
+            return View(model);
+        }
+
+        var ext = await _reservations.ExtendAsync(
+            model.ReservationId, _currentUser.UserId!.Value, model.AdditionalMinutes.Value);
+
+        if (!ext.Succeeded || ext.Value is null)
+        {
+            ModelState.AddModelError(string.Empty, ext.Error ?? "Extension payment could not be completed.");
+            return View(model);
+        }
+
+        ext.Value.PaymentReference = "SIM-EXT-" + Guid.NewGuid().ToString("N")[..10].ToUpperInvariant();
+        ext.Value.PaidAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        TempData["SuccessMessage"] =
+            $"Extension payment successful! Reference: {ext.Value.PaymentReference}. " +
+            $"Added {model.AdditionalMinutes} minutes.";
+        return RedirectToAction(nameof(Details), new { id = model.ReservationId });
     }
 
     [HttpGet]
@@ -95,6 +189,9 @@ public class ReservationsController : Controller
         var r = await _reservations.GetByIdForUserAsync(id, _currentUser.UserId!.Value);
         if (r == null) return NotFound();
 
+        if (r.Status == ReservationStatus.PendingPayment)
+            return RedirectToAction(nameof(Payment), new { id, purpose = PaymentPurpose.Booking });
+
         var cancelWindow = int.TryParse(_config["Reservations:CancelWindowMinutes"], out var cw) ? cw : 15;
         var grace = int.TryParse(_config["Reservations:QrGracePeriodMinutes"], out var gp) ? gp : 15;
         var cancelDeadline = r.StartTime.AddMinutes(-cancelWindow);
@@ -102,7 +199,7 @@ public class ReservationsController : Controller
         var qrSvg = string.Empty;
         var qrExpired = r.Status is ReservationStatus.Cancelled or ReservationStatus.Expired or ReservationStatus.Completed
                         || DateTime.Now > r.StartTime.AddMinutes(grace);
-        if (!string.IsNullOrEmpty(r.QrToken) && r.QrToken != "pending")
+        if (!string.IsNullOrEmpty(r.QrToken) && r.QrToken is not ("pending" or "unpaid"))
             qrSvg = _qr.GenerateSvg(r.QrToken);
 
         var vm = new ReservationDetailsViewModel
@@ -133,6 +230,8 @@ public class ReservationsController : Controller
         if (!result.Succeeded)
         {
             TempData["ErrorMessage"] = result.Error ?? "Could not cancel reservation.";
+            if (await _reservations.GetByIdForUserAsync(id, _currentUser.UserId!.Value) is { Status: ReservationStatus.PendingPayment })
+                return RedirectToAction(nameof(Payment), new { id });
             return RedirectToAction(nameof(Details), new { id });
         }
         TempData["SuccessMessage"] = "Reservation cancelled.";
@@ -173,23 +272,12 @@ public class ReservationsController : Controller
     {
         if (!ModelState.IsValid) return View(model);
 
-        var result = await _reservations.ExtendAsync(model.Id, _currentUser.UserId!.Value, model.AdditionalMinutes);
-        if (!result.Succeeded)
+        return RedirectToAction(nameof(Payment), new
         {
-            ModelState.AddModelError(string.Empty, result.Error ?? "Could not extend reservation.");
-            // re-hydrate display fields
-            var r = await _reservations.GetByIdForUserAsync(model.Id, _currentUser.UserId!.Value);
-            if (r != null)
-            {
-                model.SlotNumber = r.Slot?.SlotNumber ?? string.Empty;
-                model.CurrentEndTime = r.EndTime;
-                model.HourlyRate = r.Slot?.HourlyRate ?? 0m;
-            }
-            return View(model);
-        }
-
-        TempData["SuccessMessage"] = $"Reservation extended by {model.AdditionalMinutes} minutes.";
-        return RedirectToAction(nameof(Details), new { id = model.Id });
+            id = model.Id,
+            purpose = PaymentPurpose.Extension,
+            minutes = model.AdditionalMinutes
+        });
     }
 
     private static DateTime RoundUpToNext15(DateTime t)

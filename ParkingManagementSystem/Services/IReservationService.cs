@@ -9,11 +9,14 @@ public interface IReservationService
     /// <summary>Returns the active statuses that occupy a slot (block new overlapping bookings).</summary>
     static readonly ReservationStatus[] BlockingStatuses =
     {
+        ReservationStatus.PendingPayment,
         ReservationStatus.Confirmed,
         ReservationStatus.Active
     };
 
     Task<ServiceResult<Reservation>> CreateAsync(int userId, CreateReservationViewModel model);
+    Task<ServiceResult<Reservation>> ConfirmPaymentAsync(int reservationId, int userId);
+    Task<decimal> PreviewExtensionFeeAsync(int reservationId, int userId, int additionalMinutes);
     Task<Reservation?> GetByIdForUserAsync(int reservationId, int userId);
     Task<Reservation?> GetByIdAsync(int reservationId);
 

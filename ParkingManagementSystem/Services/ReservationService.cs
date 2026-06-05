@@ -79,26 +79,49 @@ public class ReservationService : IReservationService
             SlotId = slot.Id,
             StartTime = start,
             EndTime = end,
-            Status = ReservationStatus.Confirmed,
+            Status = ReservationStatus.PendingPayment,
             Fee = fee,
             ExtensionFee = 0m,
             ExtensionCount = 0,
-            QrToken = "pending",
+            QrToken = "unpaid",
             CreatedAt = DateTime.UtcNow
         };
 
         _db.Reservations.Add(reservation);
         await _db.SaveChangesAsync();
-
-        // Now we have the Id; build the signed token using the real reservation id and store it.
-        reservation.QrToken = _qr.CreateToken(reservation.Id, userId, slot.Id, start, end);
-        await _db.SaveChangesAsync();
-
         await tx.CommitAsync();
 
         // Eager-load slot for the result.
         reservation.Slot = slot;
         return ServiceResult<Reservation>.Ok(reservation);
+    }
+
+    public async Task<ServiceResult<Reservation>> ConfirmPaymentAsync(int reservationId, int userId)
+    {
+        var r = await _db.Reservations
+            .Include(x => x.Slot)
+            .FirstOrDefaultAsync(x => x.Id == reservationId && x.UserId == userId);
+
+        if (r == null) return ServiceResult<Reservation>.Fail("Reservation not found.");
+        if (r.Status != ReservationStatus.PendingPayment)
+            return ServiceResult<Reservation>.Fail("This reservation does not require payment.");
+
+        r.Status = ReservationStatus.Confirmed;
+        r.PaidAt = DateTime.UtcNow;
+        r.PaymentReference = "SIM-" + Guid.NewGuid().ToString("N")[..12].ToUpperInvariant();
+        r.QrToken = _qr.CreateToken(r.Id, r.UserId, r.SlotId, r.StartTime, r.EndTime);
+
+        await _db.SaveChangesAsync();
+        return ServiceResult<Reservation>.Ok(r);
+    }
+
+    public async Task<decimal> PreviewExtensionFeeAsync(int reservationId, int userId, int additionalMinutes)
+    {
+        var r = await _db.Reservations
+            .Include(x => x.Slot)
+            .FirstOrDefaultAsync(x => x.Id == reservationId && x.UserId == userId);
+        if (r?.Slot == null || additionalMinutes <= 0) return 0m;
+        return _pricing.CalculateFee(r.Slot.HourlyRate, TimeSpan.FromMinutes(additionalMinutes));
     }
 
     // ------------------------------------------------------------------- lookup
@@ -125,7 +148,8 @@ public class ReservationService : IReservationService
 
         return new MyReservationsViewModel
         {
-            Active = all.Where(r => r.Status == ReservationStatus.Confirmed
+            Active = all.Where(r => r.Status == ReservationStatus.PendingPayment
+                                  || r.Status == ReservationStatus.Confirmed
                                   || r.Status == ReservationStatus.Active).ToList(),
             Past = all.Where(r => r.Status == ReservationStatus.Completed
                                 || r.Status == ReservationStatus.Expired).ToList(),
@@ -167,6 +191,15 @@ public class ReservationService : IReservationService
         if (r == null) return ServiceResult.Fail("Reservation not found.");
 
         if (r.Status == ReservationStatus.Cancelled) return ServiceResult.Fail("Reservation is already cancelled.");
+
+        if (r.Status == ReservationStatus.PendingPayment)
+        {
+            r.Status = ReservationStatus.Cancelled;
+            r.CancelledAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+            return ServiceResult.Ok();
+        }
+
         if (r.Status != ReservationStatus.Confirmed)
             return ServiceResult.Fail("Only upcoming reservations can be cancelled.");
 
@@ -252,6 +285,8 @@ public class ReservationService : IReservationService
         if (r == null)
             return ServiceResult<Reservation>.Fail("Reservation not found for this QR code.");
 
+        if (r.Status == ReservationStatus.PendingPayment)
+            return ServiceResult<Reservation>.Fail("Payment has not been completed for this reservation.");
         if (r.Status == ReservationStatus.Cancelled)
             return ServiceResult<Reservation>.Fail("This reservation was cancelled.");
         if (r.Status == ReservationStatus.Completed)
@@ -319,6 +354,18 @@ public class ReservationService : IReservationService
         var now = DateTime.Now;
         var grace = GetInt("Reservations:QrGracePeriodMinutes", 15);
         var expireBefore = now.AddMinutes(-grace);
+        var paymentTimeout = GetInt("Reservations:PaymentTimeoutMinutes", 30);
+
+        // 0) Unpaid reservations that were never paid within the timeout => Cancelled.
+        var unpaidCutoff = DateTime.UtcNow.AddMinutes(-paymentTimeout);
+        var unpaid = await _db.Reservations
+            .Where(r => r.Status == ReservationStatus.PendingPayment && r.CreatedAt < unpaidCutoff)
+            .ToListAsync(ct);
+        foreach (var r in unpaid)
+        {
+            r.Status = ReservationStatus.Cancelled;
+            r.CancelledAt = DateTime.UtcNow;
+        }
 
         // 1) Confirmed reservations whose start + grace has passed and no entry => Expired.
         var expired = await _db.Reservations
@@ -342,7 +389,7 @@ public class ReservationService : IReservationService
                 r.Slot.Status = SlotStatus.Available;
         }
 
-        var changes = expired.Count + overdue.Count;
+        var changes = unpaid.Count + expired.Count + overdue.Count;
         if (changes > 0) await _db.SaveChangesAsync(ct);
         return changes;
     }
