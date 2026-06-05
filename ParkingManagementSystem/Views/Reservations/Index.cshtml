@@ -1,0 +1,84 @@
+@model MyReservationsViewModel
+@{
+    ViewData["Title"] = "My Reservations";
+}
+
+<div class="page-header">
+    <div>
+        <h1>My Reservations</h1>
+        <p class="muted">View and manage your active, past, and cancelled bookings.</p>
+    </div>
+    <a asp-controller="Slots" asp-action="Index" class="btn btn-primary">Find a slot</a>
+</div>
+
+<div class="tabs" role="tablist">
+    <button class="tab-btn active" data-tab="active" type="button">
+        Active <span class="tab-count">@Model.Active.Count</span>
+    </button>
+    <button class="tab-btn" data-tab="past" type="button">
+        Past <span class="tab-count">@Model.Past.Count</span>
+    </button>
+    <button class="tab-btn" data-tab="cancelled" type="button">
+        Cancelled <span class="tab-count">@Model.Cancelled.Count</span>
+    </button>
+</div>
+
+<div class="tab-panel active" id="tab-active">
+    @if (Model.Active.Count == 0)
+    {
+        <div class="card empty-state">
+            <h3>No active reservations</h3>
+            <p class="muted">Browse available slots and book your next parking spot.</p>
+            <a asp-controller="Slots" asp-action="Index" class="btn btn-primary">Browse slots</a>
+        </div>
+    }
+    else
+    {
+        <div class="reservation-list">
+            @foreach (var r in Model.Active)
+            {
+                <partial name="_ReservationRow" model="r" />
+            }
+        </div>
+    }
+</div>
+
+<div class="tab-panel" id="tab-past">
+    @if (Model.Past.Count == 0)
+    {
+        <div class="card empty-state">
+            <p class="muted">No completed or expired reservations yet.</p>
+        </div>
+    }
+    else
+    {
+        <div class="reservation-list">
+            @foreach (var r in Model.Past)
+            {
+                <partial name="_ReservationRow" model="r" />
+            }
+        </div>
+    }
+</div>
+
+<div class="tab-panel" id="tab-cancelled">
+    @if (Model.Cancelled.Count == 0)
+    {
+        <div class="card empty-state">
+            <p class="muted">No cancelled reservations.</p>
+        </div>
+    }
+    else
+    {
+        <div class="reservation-list">
+            @foreach (var r in Model.Cancelled)
+            {
+                <partial name="_ReservationRow" model="r" />
+            }
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script src="~/js/reservations.js" asp-append-version="true"></script>
+}

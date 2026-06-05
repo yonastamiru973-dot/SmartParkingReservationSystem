@@ -1,0 +1,46 @@
+@model Reservation
+@{
+    var statusClass = Model.Status.ToString().ToLower();
+    var isPast = Model.Status is ReservationStatus.Completed or ReservationStatus.Expired;
+}
+
+<article class="reservation-row card">
+    <div class="reservation-row-main">
+        <div class="reservation-slot">
+            <span class="slot-number-sm">@(Model.Slot?.SlotNumber ?? "—")</span>
+            <span class="res-status-badge status-@statusClass">@Model.Status</span>
+        </div>
+        <div class="reservation-times">
+            <span><strong>Start:</strong> @Model.StartTime.ToString("MMM d, yyyy h:mm tt")</span>
+            <span><strong>End:</strong> @Model.EndTime.ToString("MMM d, yyyy h:mm tt")</span>
+            <span class="muted">Duration: @FormatDuration(Model.PlannedDuration)</span>
+        </div>
+        <div class="reservation-fee">
+            <span class="fee-amount">@Model.TotalFee.ToString("C")</span>
+            @if (Model.ExtensionFee > 0)
+            {
+                <span class="muted fee-breakdown">incl. @Model.ExtensionFee.ToString("C") extension</span>
+            }
+            @if (isPast && Model.ActualDuration.HasValue)
+            {
+                <span class="muted">Actual: @FormatDuration(Model.ActualDuration.Value)</span>
+            }
+        </div>
+    </div>
+    <div class="reservation-row-actions">
+        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-secondary btn-sm">Details</a>
+        @if (Model.Status == ReservationStatus.Confirmed || Model.Status == ReservationStatus.Active)
+        {
+            <a asp-action="Extend" asp-route-id="@Model.Id" class="btn btn-secondary btn-sm">Extend</a>
+        }
+    </div>
+</article>
+
+@functions {
+    string FormatDuration(TimeSpan d)
+    {
+        if (d.TotalHours >= 1)
+            return $"{(int)d.TotalHours}h {d.Minutes}m";
+        return $"{d.Minutes} min";
+    }
+}

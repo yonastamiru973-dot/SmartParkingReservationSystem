@@ -1,0 +1,26 @@
+@model Reservation
+@{
+    ViewData["Title"] = "Cancel Reservation";
+}
+
+<div class="page-header">
+    <h1>Cancel Reservation</h1>
+    <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-secondary">Back</a>
+</div>
+
+<div class="card narrow">
+    <p>Are you sure you want to cancel your reservation for slot <strong>@(Model.Slot?.SlotNumber ?? "—")</strong>?</p>
+    <p class="muted">
+        @Model.StartTime.ToString("MMMM d, yyyy h:mm tt") — @Model.EndTime.ToString("h:mm tt")
+        &middot; Fee: @Model.TotalFee.ToString("C")
+    </p>
+    <p class="muted">This action cannot be undone.</p>
+
+    <form asp-action="Cancel" asp-route-id="@Model.Id" method="post">
+        @Html.AntiForgeryToken()
+        <div class="form-actions">
+            <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-secondary">Keep reservation</a>
+            <button type="submit" class="btn btn-danger">Yes, cancel</button>
+        </div>
+    </form>
+</div>

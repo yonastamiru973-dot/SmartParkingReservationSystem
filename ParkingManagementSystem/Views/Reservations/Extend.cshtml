@@ -1,0 +1,58 @@
+@model ExtendReservationViewModel
+@{
+    ViewData["Title"] = "Extend Reservation";
+}
+
+<div class="page-header">
+    <h1>Extend Parking Time</h1>
+    <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-secondary">Back</a>
+</div>
+
+<div class="card narrow">
+    <p>Extend your reservation for slot <strong>@Model.SlotNumber</strong>.</p>
+    <p class="muted">Current end: <strong>@Model.CurrentEndTime.ToString("MMMM d, yyyy h:mm tt")</strong></p>
+
+    <form asp-action="Extend" method="post" novalidate id="extend-form">
+        <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+        <input type="hidden" asp-for="Id" />
+        <input type="hidden" asp-for="SlotNumber" />
+        <input type="hidden" asp-for="CurrentEndTime" />
+        <input type="hidden" asp-for="HourlyRate" id="hourly-rate" />
+
+        <div class="form-row">
+            <label asp-for="AdditionalMinutes"></label>
+            <select asp-for="AdditionalMinutes" class="form-input" id="additional-minutes"
+                    asp-items="@(new SelectList(new[] {
+                        new { V = 15, L = "15 minutes" },
+                        new { V = 30, L = "30 minutes" },
+                        new { V = 60, L = "1 hour" },
+                        new { V = 90, L = "1.5 hours" },
+                        new { V = 120, L = "2 hours" },
+                        new { V = 180, L = "3 hours" },
+                        new { V = 240, L = "4 hours" }
+                    }, "V", "L", Model.AdditionalMinutes))"></select>
+            <span asp-validation-for="AdditionalMinutes" class="field-error"></span>
+        </div>
+
+        <div class="fee-preview card fee-preview-inner">
+            <div class="fee-preview-row">
+                <span>New end time</span>
+                <strong id="new-end">@Model.NewEndTime.ToString("MMM d, h:mm tt")</strong>
+            </div>
+            <div class="fee-preview-row fee-total">
+                <span>Additional fee</span>
+                <strong id="additional-fee">@Model.AdditionalFee.ToString("C")</strong>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">Confirm extension</button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/reservation-extend.js" asp-append-version="true"></script>
+}

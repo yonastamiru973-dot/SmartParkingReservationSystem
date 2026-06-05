@@ -1,0 +1,97 @@
+@model ReservationDetailsViewModel
+@{
+    ViewData["Title"] = $"Reservation #{Model.Reservation.Id}";
+    var r = Model.Reservation;
+    var statusClass = r.Status.ToString().ToLower();
+}
+
+<div class="page-header">
+    <div>
+        <h1>Reservation #@r.Id</h1>
+        <span class="res-status-badge status-@statusClass">@r.Status</span>
+    </div>
+    <a asp-action="Index" class="btn btn-secondary">My reservations</a>
+</div>
+
+<div class="reservation-detail-layout">
+    <div class="card">
+        <h3>Booking summary</h3>
+        <dl class="info-list">
+            <div class="info-row"><dt>Slot</dt><dd><span class="slot-number-sm">@(r.Slot?.SlotNumber ?? "—")</span> <span class="slot-type-tag type-@(r.Slot?.SlotType.ToString().ToLower())">@r.Slot?.SlotType</span></dd></div>
+            <div class="info-row"><dt>Start</dt><dd>@r.StartTime.ToString("MMMM d, yyyy h:mm tt")</dd></div>
+            <div class="info-row"><dt>End</dt><dd>@r.EndTime.ToString("MMMM d, yyyy h:mm tt")</dd></div>
+            <div class="info-row"><dt>Planned duration</dt><dd>@FormatDuration(r.PlannedDuration)</dd></div>
+            <div class="info-row"><dt>Base fee</dt><dd>@r.Fee.ToString("C")</dd></div>
+            @if (r.ExtensionFee > 0)
+            {
+                <div class="info-row"><dt>Extension fees</dt><dd>@r.ExtensionFee.ToString("C") (@r.ExtensionCount extension(s))</dd></div>
+            }
+            <div class="info-row"><dt>Total fee</dt><dd><strong>@r.TotalFee.ToString("C")</strong></dd></div>
+            @if (r.EntryTime.HasValue)
+            {
+                <div class="info-row"><dt>Entry time</dt><dd>@r.EntryTime.Value.ToLocalTime().ToString("MMMM d, yyyy h:mm tt")</dd></div>
+            }
+            @if (r.ExitTime.HasValue)
+            {
+                <div class="info-row"><dt>Exit time</dt><dd>@r.ExitTime.Value.ToLocalTime().ToString("MMMM d, yyyy h:mm tt")</dd></div>
+            }
+            @if (r.ActualDuration.HasValue)
+            {
+                <div class="info-row"><dt>Actual duration</dt><dd>@FormatDuration(r.ActualDuration.Value)</dd></div>
+            }
+            @if (r.CancelledAt.HasValue)
+            {
+                <div class="info-row"><dt>Cancelled at</dt><dd>@r.CancelledAt.Value.ToLocalTime().ToString("MMMM d, yyyy h:mm tt")</dd></div>
+            }
+        </dl>
+
+        <div class="detail-actions">
+            @if (Model.CanExtend)
+            {
+                <a asp-action="Extend" asp-route-id="@r.Id" class="btn btn-primary">Extend time</a>
+            }
+            @if (Model.CanCancel)
+            {
+                <a asp-action="Cancel" asp-route-id="@r.Id" class="btn btn-danger">Cancel reservation</a>
+            }
+            else if (r.Status == ReservationStatus.Confirmed)
+            {
+                <p class="muted cancel-note">Cancellation window closed (must cancel at least 15 minutes before start).</p>
+            }
+        </div>
+    </div>
+
+    <div class="card qr-card">
+        <h3>Entry QR code</h3>
+        @if (Model.QrExpired)
+        {
+            <div class="qr-expired">
+                <p class="text-error">This QR code is no longer valid.</p>
+                <p class="muted">QR codes expire 15 minutes after the reservation start time, or when the reservation is cancelled/completed.</p>
+            </div>
+        }
+        else if (!string.IsNullOrEmpty(Model.QrCodeSvg))
+        {
+            <div class="qr-wrap">
+                @Html.Raw(Model.QrCodeSvg)
+            </div>
+            <p class="muted qr-hint">Present this code at the parking entrance. Valid from start time until 15 minutes after.</p>
+            <details class="qr-token-details">
+                <summary>View raw token (for testing)</summary>
+                <code class="qr-token">@r.QrToken</code>
+            </details>
+        }
+        else
+        {
+            <p class="muted">QR code is being generated…</p>
+        }
+    </div>
+</div>
+
+@functions {
+    string FormatDuration(TimeSpan d)
+    {
+        if (d.TotalHours >= 1) return $"{(int)d.TotalHours}h {d.Minutes}m";
+        return $"{d.Minutes} min";
+    }
+}

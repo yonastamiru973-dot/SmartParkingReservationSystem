@@ -1,0 +1,84 @@
+@model CreateReservationViewModel
+@{
+    ViewData["Title"] = $"Reserve Slot {Model.SlotNumber}";
+}
+
+<div class="page-header">
+    <h1>Reserve Slot @Model.SlotNumber</h1>
+    <a asp-controller="Slots" asp-action="Index" class="btn btn-secondary">Back to slots</a>
+</div>
+
+<div class="reservation-create-layout">
+    <div class="card slot-summary">
+        <h3>Slot details</h3>
+        <dl class="info-list">
+            <div class="info-row"><dt>Slot</dt><dd><span class="slot-number-sm">@Model.SlotNumber</span></dd></div>
+            <div class="info-row"><dt>Type</dt><dd><span class="slot-type-tag type-@Model.SlotType.ToLower()">@Model.SlotType</span></dd></div>
+            <div class="info-row"><dt>Rate</dt><dd>@Model.HourlyRate.ToString("C") / hour</dd></div>
+            @if (!string.IsNullOrWhiteSpace(Model.SlotDescription))
+            {
+                <div class="info-row"><dt>Notes</dt><dd class="muted">@Model.SlotDescription</dd></div>
+            }
+        </dl>
+    </div>
+
+    <div class="card">
+        <h3>Booking details</h3>
+        <form asp-action="Create" method="post" novalidate id="reservation-form">
+            <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+            <input type="hidden" asp-for="SlotId" />
+            <input type="hidden" asp-for="SlotNumber" />
+            <input type="hidden" asp-for="SlotType" />
+            <input type="hidden" asp-for="HourlyRate" id="hourly-rate" />
+            <input type="hidden" asp-for="SlotDescription" />
+
+            <div class="form-grid-2">
+                <div class="form-row">
+                    <label asp-for="StartTime"></label>
+                    <input asp-for="StartTime" class="form-input" type="datetime-local"
+                           value="@Model.StartTime.ToString("yyyy-MM-ddTHH:mm")"
+                           id="start-time" />
+                    <span asp-validation-for="StartTime" class="field-error"></span>
+                </div>
+                <div class="form-row">
+                    <label asp-for="DurationMinutes"></label>
+                    <select asp-for="DurationMinutes" class="form-input" id="duration"
+                            asp-items="@(new SelectList(new[] {
+                                new { V = 30, L = "30 minutes" },
+                                new { V = 60, L = "1 hour" },
+                                new { V = 90, L = "1.5 hours" },
+                                new { V = 120, L = "2 hours" },
+                                new { V = 180, L = "3 hours" },
+                                new { V = 240, L = "4 hours" },
+                                new { V = 480, L = "8 hours" },
+                                new { V = 720, L = "12 hours" },
+                                new { V = 1440, L = "24 hours" }
+                            }, "V", "L", Model.DurationMinutes))"></select>
+                    <span asp-validation-for="DurationMinutes" class="field-error"></span>
+                </div>
+            </div>
+
+            <div class="fee-preview card fee-preview-inner">
+                <div class="fee-preview-row">
+                    <span>Planned end</span>
+                    <strong id="preview-end">@Model.EndTime.ToString("MMM d, h:mm tt")</strong>
+                </div>
+                <div class="fee-preview-row fee-total">
+                    <span>Estimated fee</span>
+                    <strong id="preview-fee">@Model.EstimatedFee.ToString("C")</strong>
+                </div>
+                <p class="muted fee-note">Fee = hourly rate × duration. Charged at confirmation.</p>
+            </div>
+
+            <div class="form-actions">
+                <a asp-controller="Slots" asp-action="Index" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">Confirm reservation</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/reservation-create.js" asp-append-version="true"></script>
+}
