@@ -86,18 +86,24 @@
     </div>
 </section>
 
+@{
+    var slotsJson = System.Text.Json.JsonSerializer.Serialize(
+        Model.Slots.Select(s => new
+        {
+            id = s.Id,
+            slotNumber = s.SlotNumber,
+            slotType = s.SlotType.ToString(),
+            status = s.Status.ToString(),
+            hourlyRate = s.HourlyRate,
+            latitude = s.Latitude,
+            longitude = s.Longitude,
+            description = s.Description
+        }));
+}
+
 <div id="slot-data"
      data-status-url="@Url.Action("Status", "Slots", new { search = Model.SearchTerm, type = Model.TypeFilter, status = Model.StatusFilter })"
-     data-slots-json="@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Slots.Select(s => new {
-         id = s.Id,
-         slotNumber = s.SlotNumber,
-         slotType = s.SlotType.ToString(),
-         status = s.Status.ToString(),
-         hourlyRate = s.HourlyRate,
-         latitude = s.Latitude,
-         longitude = s.Longitude,
-         description = s.Description
-     })))"></div>
+     data-slots-json="@slotsJson"></div>
 
 @section Scripts {
     <script src="~/js/slots.js" asp-append-version="true"></script>
