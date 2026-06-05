@@ -1,0 +1,93 @@
+@model ScannerViewModel
+@{
+    ViewData["Title"] = "QR Scanner";
+    var result = ViewBag.ScanResult as ScanResultViewModel;
+}
+
+<div class="page-header">
+    <div>
+        <h1>QR Scanner</h1>
+        <p class="muted">Scan a reservation QR code for entry or exit validation.</p>
+    </div>
+</div>
+
+@if (result != null)
+{
+    <div class="alert @(result.Success ? "alert-success" : "alert-error") scan-result-banner">
+        <strong>@(result.Success ? "Success" : "Failed"):</strong> @result.Message
+        @if (result.Success && result.Reservation != null)
+        {
+            var r = result.Reservation;
+            <div class="scan-result-details">
+                <span><strong>User:</strong> @(r.User?.FullName ?? "—")</span>
+                <span><strong>Slot:</strong> @(r.Slot?.SlotNumber ?? "—")</span>
+                <span><strong>Window:</strong> @r.StartTime.ToString("h:mm tt") — @r.EndTime.ToString("h:mm tt")</span>
+                @if (result.Action == ScanAction.Exit && result.ActualDuration.HasValue)
+                {
+                    <span><strong>Duration:</strong> @FormatDuration(result.ActualDuration.Value)</span>
+                    <span><strong>Total fee:</strong> @(result.FinalFee?.ToString("C") ?? "—")</span>
+                }
+                @if (result.Action == ScanAction.Entry && r.EntryTime.HasValue)
+                {
+                    <span><strong>Entry logged:</strong> @r.EntryTime.Value.ToLocalTime().ToString("h:mm:ss tt")</span>
+                }
+            </div>
+        }
+    </div>
+}
+
+<div class="scanner-layout">
+    <div class="card scanner-camera-card">
+        <h3>Camera scan</h3>
+        <p class="muted">Point the camera at the customer's QR code. Works on mobile and desktop with a webcam.</p>
+        <div id="qr-reader" class="qr-reader"></div>
+        <p id="camera-status" class="muted camera-status">Initializing camera…</p>
+    </div>
+
+    <div class="card scanner-form-card">
+        <h3>Manual entry</h3>
+        <p class="muted">Or paste the raw QR token if the camera is unavailable.</p>
+
+        <form asp-action="Index" method="post" novalidate id="scanner-form">
+            <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+            @Html.AntiForgeryToken()
+
+            <div class="form-row">
+                <label asp-for="Action"></label>
+                <div class="scan-action-toggle">
+                    <label class="radio-pill">
+                        <input type="radio" asp-for="Action" value="@ScanAction.Entry" checked />
+                        <span>Entry</span>
+                    </label>
+                    <label class="radio-pill">
+                        <input type="radio" asp-for="Action" value="@ScanAction.Exit" />
+                        <span>Exit</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <label asp-for="Token"></label>
+                <textarea asp-for="Token" class="form-input" rows="4" id="token-input"
+                          placeholder="QR token will appear here after a scan, or paste manually…"></textarea>
+                <span asp-validation-for="Token" class="field-error"></span>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block">Validate scan</button>
+        </form>
+    </div>
+</div>
+
+@functions {
+    string FormatDuration(TimeSpan d)
+    {
+        if (d.TotalHours >= 1) return $"{(int)d.TotalHours}h {d.Minutes}m";
+        return $"{d.Minutes} min";
+    }
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="~/js/scanner.js" asp-append-version="true"></script>
+}
