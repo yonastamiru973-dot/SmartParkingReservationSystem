@@ -5,3 +5,7 @@ obj/
 *.suo
 *.userosscache
 *.sln.docstates
+
+# Local app data (logs, dev emails) — keep folder, ignore contents
+ParkingManagementSystem/App_Data/*
+!ParkingManagementSystem/App_Data/.gitkeep
