@@ -1,0 +1,112 @@
+@model PaymentViewModel
+@{
+    ViewData["Title"] = Model.Purpose == PaymentPurpose.Booking ? "Complete Payment" : "Pay for Extension";
+    var isExtension = Model.Purpose == PaymentPurpose.Extension;
+}
+
+<div class="page-header">
+    <div>
+        <h1>@(isExtension ? "Pay for Extension" : "Complete Payment")</h1>
+        <p class="muted">
+            <span class="sim-badge">Simulated payment</span>
+            No real money is charged — this is a demo checkout for your assignment.
+        </p>
+    </div>
+</div>
+
+<div class="payment-layout">
+    <div class="card payment-summary">
+        <h3>Order summary</h3>
+        <dl class="info-list">
+            <div class="info-row"><dt>Slot</dt><dd><span class="slot-number-sm">@Model.SlotNumber</span></dd></div>
+            <div class="info-row"><dt>Start</dt><dd>@Model.StartTime.ToString("MMM d, yyyy h:mm tt")</dd></div>
+            <div class="info-row"><dt>@(isExtension ? "New end" : "End")</dt><dd>@Model.EndTime.ToString("MMM d, yyyy h:mm tt")</dd></div>
+            @if (isExtension)
+            {
+                <div class="info-row"><dt>Extension</dt><dd>+@Model.AdditionalMinutes minutes</dd></div>
+            }
+            <div class="info-row"><dt>Amount due</dt><dd><strong class="payment-amount">@Model.Amount.ToString("C")</strong></dd></div>
+        </dl>
+        @if (!isExtension)
+        {
+            <p class="muted payment-note">Your slot is held for 30 minutes while you complete payment.</p>
+            <form asp-action="Cancel" asp-route-id="@Model.ReservationId" method="post" class="cancel-unpaid-form">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-link">Cancel unpaid reservation</button>
+            </form>
+        }
+        else
+        {
+            <a asp-action="Extend" asp-route-id="@Model.ReservationId" class="btn btn-link">Back to extension</a>
+        }
+    </div>
+
+    <div class="card payment-form-card">
+        <div class="fake-card-preview">
+            <div class="fake-card-chip"></div>
+            <div class="fake-card-number" id="preview-card-number">•••• •••• •••• ••••</div>
+            <div class="fake-card-footer">
+                <span id="preview-card-holder">CARDHOLDER NAME</span>
+                <span id="preview-card-expiry">MM/YY</span>
+            </div>
+        </div>
+
+        <form asp-action="Payment" method="post" novalidate id="payment-form">
+            <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+            <input type="hidden" asp-for="ReservationId" />
+            <input type="hidden" asp-for="Purpose" />
+            <input type="hidden" asp-for="AdditionalMinutes" />
+            <input type="hidden" asp-for="Amount" />
+            <input type="hidden" asp-for="SlotNumber" />
+            <input type="hidden" asp-for="StartTime" />
+            <input type="hidden" asp-for="EndTime" />
+
+            <div class="form-row">
+                <label asp-for="CardNumber"></label>
+                <input asp-for="CardNumber" class="form-input" id="card-number"
+                       placeholder="4242 4242 4242 4242" maxlength="16" inputmode="numeric" autocomplete="off" />
+                <span asp-validation-for="CardNumber" class="field-error"></span>
+            </div>
+
+            <div class="form-row">
+                <label asp-for="CardHolder"></label>
+                <input asp-for="CardHolder" class="form-input" id="card-holder"
+                       placeholder="John Doe" autocomplete="off" />
+                <span asp-validation-for="CardHolder" class="field-error"></span>
+            </div>
+
+            <div class="form-grid-2">
+                <div class="form-row">
+                    <label asp-for="Expiry"></label>
+                    <input asp-for="Expiry" class="form-input" id="card-expiry"
+                           placeholder="12/28" maxlength="5" autocomplete="off" />
+                    <span asp-validation-for="Expiry" class="field-error"></span>
+                </div>
+                <div class="form-row">
+                    <label asp-for="Cvv"></label>
+                    <input asp-for="Cvv" class="form-input" id="card-cvv"
+                           placeholder="123" maxlength="3" inputmode="numeric" autocomplete="off" />
+                    <span asp-validation-for="Cvv" class="field-error"></span>
+                </div>
+            </div>
+
+            <div id="payment-processing" class="payment-processing" hidden>
+                <div class="payment-spinner"></div>
+                <p>Processing simulated payment…</p>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block" id="pay-btn">
+                Pay @Model.Amount.ToString("C") (simulation)
+            </button>
+        </form>
+
+        <p class="muted payment-demo-hint">
+            Demo tip: use card <code>4242424242424242</code>, any future expiry, any name, CVV <code>123</code>.
+        </p>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/payment-sim.js" asp-append-version="true"></script>
+}

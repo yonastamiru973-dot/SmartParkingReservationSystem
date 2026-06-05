@@ -28,10 +28,22 @@
         </div>
     </div>
     <div class="reservation-row-actions">
-        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-secondary btn-sm">Details</a>
-        @if (Model.Status == ReservationStatus.Confirmed || Model.Status == ReservationStatus.Active)
+        @if (Model.Status == ReservationStatus.PendingPayment)
         {
-            <a asp-action="Extend" asp-route-id="@Model.Id" class="btn btn-secondary btn-sm">Extend</a>
+            <a asp-action="Payment" asp-route-id="@Model.Id" asp-route-purpose="Booking"
+               class="btn btn-primary btn-sm">Pay now</a>
+            <form asp-action="Cancel" asp-route-id="@Model.Id" method="post" class="inline-cancel-form">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-secondary btn-sm">Cancel</button>
+            </form>
+        }
+        else
+        {
+            <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-secondary btn-sm">Details</a>
+            @if (Model.Status == ReservationStatus.Confirmed || Model.Status == ReservationStatus.Active)
+            {
+                <a asp-action="Extend" asp-route-id="@Model.Id" class="btn btn-secondary btn-sm">Extend</a>
+            }
         }
     </div>
 </article>

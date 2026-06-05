@@ -41,6 +41,12 @@ public class Reservation
     public DateTime? ExitTime { get; set; }
     public DateTime? CancelledAt { get; set; }
 
+    /// <summary>When the simulated payment was completed (no real gateway).</summary>
+    public DateTime? PaidAt { get; set; }
+
+    [MaxLength(50)]
+    public string? PaymentReference { get; set; }
+
     /// <summary>Actual time spent in the slot (set on exit scan or auto-completion).</summary>
     public TimeSpan? ActualDuration { get; set; }
 

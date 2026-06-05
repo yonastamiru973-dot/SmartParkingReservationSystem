@@ -27,6 +27,14 @@
                 <div class="info-row"><dt>Extension fees</dt><dd>@r.ExtensionFee.ToString("C") (@r.ExtensionCount extension(s))</dd></div>
             }
             <div class="info-row"><dt>Total fee</dt><dd><strong>@r.TotalFee.ToString("C")</strong></dd></div>
+            @if (r.PaidAt.HasValue)
+            {
+                <div class="info-row"><dt>Paid at</dt><dd>@r.PaidAt.Value.ToLocalTime().ToString("MMMM d, yyyy h:mm tt")</dd></div>
+            }
+            @if (!string.IsNullOrEmpty(r.PaymentReference))
+            {
+                <div class="info-row"><dt>Payment ref</dt><dd><code>@r.PaymentReference</code> <span class="muted">(simulated)</span></dd></div>
+            }
             @if (r.EntryTime.HasValue)
             {
                 <div class="info-row"><dt>Entry time</dt><dd>@r.EntryTime.Value.ToLocalTime().ToString("MMMM d, yyyy h:mm tt")</dd></div>
