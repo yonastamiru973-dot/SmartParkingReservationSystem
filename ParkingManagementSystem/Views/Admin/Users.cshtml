@@ -1,0 +1,61 @@
+@model IReadOnlyList<User>
+@{
+    ViewData["Title"] = "Registered Users";
+}
+
+<div class="page-header">
+    <div>
+        <h1>Registered Users</h1>
+        <p class="muted">All users currently registered in the system. (@Model.Count total)</p>
+    </div>
+</div>
+
+<div class="card">
+    @if (Model.Count == 0)
+    {
+        <p class="muted">No users registered yet.</p>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Full Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Plate</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Registered</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var user in Model)
+                    {
+                        <tr>
+                            <td>@user.Id</td>
+                            <td>@user.FullName</td>
+                            <td>@user.Email</td>
+                            <td>@user.PhoneNumber</td>
+                            <td><span class="plate-badge plate-badge-sm">@user.VehiclePlateNumber</span></td>
+                            <td><span class="role-badge role-@user.Role.ToLower()">@user.Role</span></td>
+                            <td>
+                                @if (user.IsActive)
+                                {
+                                    <span class="status-badge status-active">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="status-badge status-inactive">Inactive</span>
+                                }
+                            </td>
+                            <td>@user.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
