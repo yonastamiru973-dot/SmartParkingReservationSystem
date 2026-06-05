@@ -1,0 +1,38 @@
+@{
+    ViewData["Title"] = "Welcome";
+}
+
+<section class="hero">
+    <div class="hero-text">
+        <h1>Smart Parking, Simplified.</h1>
+        <p class="hero-sub">
+            Reserve parking spots in seconds, manage your vehicles, and never circle the lot again.
+        </p>
+        <div class="hero-actions">
+            <a asp-controller="Account" asp-action="Register" class="btn btn-primary btn-lg">Create your account</a>
+            <a asp-controller="Account" asp-action="Login" class="btn btn-secondary btn-lg">Sign in</a>
+        </div>
+    </div>
+    <div class="hero-visual">
+        <div class="floating-card">
+            <div class="floating-card-row"><span class="dot dot-ok"></span> Spot A-12 reserved</div>
+            <div class="floating-card-row"><span class="dot dot-warn"></span> Spot B-05 ending in 10m</div>
+            <div class="floating-card-row"><span class="dot dot-info"></span> Plate ABC-1234</div>
+        </div>
+    </div>
+</section>
+
+<section class="feature-grid">
+    <div class="feature">
+        <h3>Quick Reservations</h3>
+        <p>Book a parking spot in just a few clicks, anytime, anywhere.</p>
+    </div>
+    <div class="feature">
+        <h3>Secure Login</h3>
+        <p>Your data is protected with industry-standard password hashing.</p>
+    </div>
+    <div class="feature">
+        <h3>Manage Your Profile</h3>
+        <p>Update your contact details and vehicle information at any time.</p>
+    </div>
+</section>

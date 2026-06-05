@@ -1,0 +1,30 @@
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="page-header">
+    <div>
+        <h1>Welcome back, @ViewData["FullName"]</h1>
+        <p class="muted">You are signed in as <strong>@ViewData["Role"]</strong>.</p>
+    </div>
+</div>
+
+<div class="card-grid">
+    <a asp-controller="Profile" asp-action="Index" class="card card-link">
+        <h3>My Profile</h3>
+        <p>View and update your personal and vehicle information.</p>
+    </a>
+
+    @if (CurrentUser.IsAdmin)
+    {
+        <a asp-controller="Admin" asp-action="Users" class="card card-link">
+            <h3>Manage Users</h3>
+            <p>View all registered users on the platform.</p>
+        </a>
+    }
+
+    <div class="card">
+        <h3>Reservations</h3>
+        <p class="muted">Reservation features will be available in the next sprint.</p>
+    </div>
+</div>
